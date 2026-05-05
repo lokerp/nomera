@@ -178,6 +178,15 @@ class DetectionService:
             min_confirmations=self._settings.tracker_min_confirmations,
             window_sec=self._settings.tracker_window_sec,
             departure_sec=self._settings.tracker_departure_sec,
+            max_text_distance=self._settings.tracker_max_text_distance,
+            spatial_match_iou=self._settings.tracker_spatial_match_iou,
+            spatial_match_window_sec=self._settings.tracker_spatial_match_window_sec,
+            max_spatial_text_distance=self._settings.tracker_max_spatial_text_distance,
+            spatial_match_center_distance_factor=self._settings.tracker_spatial_match_center_distance_factor,
+            duplicate_event_iou=self._settings.tracker_duplicate_event_iou,
+            duplicate_event_window_sec=self._settings.tracker_duplicate_event_window_sec,
+            duplicate_event_text_distance=self._settings.tracker_duplicate_event_text_distance,
+            duplicate_event_center_distance_factor=self._settings.tracker_duplicate_event_center_distance_factor,
         )
 
         # Frame buffer for batch processing

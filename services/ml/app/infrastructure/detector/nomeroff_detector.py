@@ -31,9 +31,10 @@ class NomeroffDetector(IPlateDetector):
     Lazy-loads the pipeline on first use or explicit warmup().
     """
 
-    def __init__(self) -> None:
+    def __init__(self, force_ru_ocr: bool = False) -> None:
         self._pipeline = None
         self._unzip = None
+        self._force_ru_ocr = force_ru_ocr
 
     def warmup(self) -> None:
         """Load nomeroff-net models. Call once at startup."""
@@ -46,9 +47,16 @@ class NomeroffDetector(IPlateDetector):
         from nomeroff_net import pipeline
         from nomeroff_net.tools import unzip
 
-        self._pipeline = pipeline(
-            "number_plate_detection_and_reading",
-        )
+        pipeline_kwargs = {}
+        if self._force_ru_ocr:
+            logger.info("Forcing RU OCR mode (region classification disabled)")
+            pipeline_kwargs = {
+                "off_number_plate_classification": True,
+                "default_label": "ru",
+                "default_lines_count": 1,
+            }
+
+        self._pipeline = pipeline("number_plate_detection_and_reading", **pipeline_kwargs)
         self._unzip = unzip
         logger.info("Nomeroff-net pipeline ready")
 

@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     # --- Video processing ---
     frame_skip: int = 5          # process every Nth frame
     batch_size: int = 4          # frames per detector call
+    force_ru_ocr: bool = False   # force ru OCR and disable region classification
 
     # --- Filtering ---
     min_bbox_area_pct: float = 0.10  # minimum bbox area as % of frame area
@@ -33,6 +34,15 @@ class Settings(BaseSettings):
     tracker_window_sec: float = 10.0    # deduplication sliding window
     tracker_min_confirmations: int = 3  # min detections to confirm a plate
     tracker_departure_sec: float = 5.0  # seconds without detection → "departed"
+    tracker_max_text_distance: int = 1  # strict match by OCR text distance
+    tracker_spatial_match_iou: float = 0.45  # fallback IoU match for OCR variants
+    tracker_spatial_match_window_sec: float = 1.5  # recency window for IoU fallback
+    tracker_max_spatial_text_distance: int = 10  # max OCR distance in IoU fallback (effectively disabled for normal plates)
+    tracker_spatial_match_center_distance_factor: float = 2.5  # fallback center-distance match for moving plates
+    tracker_duplicate_event_iou: float = 0.35  # suppress near-duplicate confirmed events by IoU
+    tracker_duplicate_event_window_sec: float = 4.0  # time window for duplicate suppression
+    tracker_duplicate_event_text_distance: int = 2  # OCR distance for duplicate suppression
+    tracker_duplicate_event_center_distance_factor: float = 3.0  # duplicate suppression by center-distance
 
     # --- Server ---
     host: str = "0.0.0.0"

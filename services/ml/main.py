@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 60)
 
     # 1. Initialize detector (loads ML models)
-    detector = NomeroffDetector()
+    detector = NomeroffDetector(force_ru_ocr=settings.force_ru_ocr)
     detector.warmup()
 
     # 2. Initialize event sender
