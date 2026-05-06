@@ -6,3 +6,4 @@ sqlalchemy
 aiosqlite
 PyJWT
 pytest
+python-multipart

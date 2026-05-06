@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { apiRequest } from '../api/client'
+import { API_BASE, apiRequest } from '../api/client'
 import CamerasPanel from '../components/CamerasPanel.vue'
 import LogsPanel from '../components/LogsPanel.vue'
 import PlatesPanel from '../components/PlatesPanel.vue'
@@ -128,11 +128,56 @@ async function refreshActiveTab() {
 
 async function createCamera(payload) {
   try {
-    await apiRequest('/api/cameras', { method: 'POST', body: JSON.stringify(payload) })
+    let finalPayload = { ...payload }
+    if (payload.source_type === 'mp4' && payload.mp4_file) {
+      const formData = new FormData()
+      formData.append('file', payload.mp4_file)
+      const uploadResponse = await apiRequest('/api/cameras/upload-video', {
+        method: 'POST',
+        body: formData,
+        headers: {}
+      })
+      finalPayload.stream_url = `${API_BASE}${uploadResponse.video_url}${payload.mp4_loop ? '?loop=1' : ''}`
+    }
+    const requestPayload = {
+      id: finalPayload.id,
+      name: finalPayload.name,
+      parking_lot_id: finalPayload.parking_lot_id,
+      stream_url: finalPayload.stream_url
+    }
+    await apiRequest('/api/cameras', { method: 'POST', body: JSON.stringify(requestPayload) })
     await loadCameras()
     showToast('Камера добавлена', 'success')
   } catch (err) {
     showToast(err.message || 'Не удалось добавить камеру')
+  }
+}
+
+async function updateCamera(cameraId, payload, done) {
+  try {
+    let finalPayload = { ...payload }
+    if (payload.source_type === 'mp4' && payload.mp4_file) {
+      const formData = new FormData()
+      formData.append('file', payload.mp4_file)
+      const uploadResponse = await apiRequest('/api/cameras/upload-video', {
+        method: 'POST',
+        body: formData,
+        headers: {}
+      })
+      finalPayload.stream_url = `${API_BASE}${uploadResponse.video_url}${payload.mp4_loop ? '?loop=1' : ''}`
+    }
+    const requestPayload = {
+      id: finalPayload.id,
+      name: finalPayload.name,
+      parking_lot_id: finalPayload.parking_lot_id,
+      stream_url: finalPayload.stream_url
+    }
+    await apiRequest(`/api/cameras/${cameraId}`, { method: 'PUT', body: JSON.stringify(requestPayload) })
+    await loadCameras()
+    done?.()
+    showToast('Камера обновлена', 'success')
+  } catch (err) {
+    showToast(err.message || 'Не удалось обновить камеру')
   }
 }
 
@@ -193,6 +238,18 @@ async function createAllowedPlate(payload) {
   }
 }
 
+async function updateAllowedPlate(id, payload, done) {
+  try {
+    payload.parking_lot_id = selectedParkingLotId.value
+    await apiRequest(`/api/allowed-plates/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
+    await loadPlatesAndRequests()
+    done?.()
+    showToast('Допуск обновлен', 'success')
+  } catch (err) {
+    showToast(err.message || 'Не удалось обновить допуск')
+  }
+}
+
 async function deleteAllowedPlate(id) {
   try {
     await apiRequest(`/api/allowed-plates/${id}`, { method: 'DELETE' })
@@ -230,6 +287,17 @@ async function createAccessRequest(payload) {
     showToast('Заявка отправлена', 'success')
   } catch (err) {
     showToast(err.message || 'Не удалось отправить заявку')
+  }
+}
+
+async function updateAccessRequest(id, payload, done) {
+  try {
+    await apiRequest(`/api/access-requests/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
+    await loadPlatesAndRequests()
+    done?.()
+    showToast('Заявка обновлена', 'success')
+  } catch (err) {
+    showToast(err.message || 'Не удалось обновить заявку')
   }
 }
 
@@ -342,6 +410,7 @@ onBeforeUnmount(() => {
       @update-parking="updateParkingLot"
       @delete-parking="deleteParkingLot"
       @save-camera="createCamera"
+      @update-camera="updateCamera"
       @delete-camera="deleteCamera"
     />
     <PlatesPanel
@@ -352,8 +421,10 @@ onBeforeUnmount(() => {
       @approve="approveRequest"
       @reject="rejectRequest"
       @save-plate="createAllowedPlate"
+      @update-plate="updateAllowedPlate"
       @delete-plate="deleteAllowedPlate"
       @create-request="createAccessRequest"
+      @update-request="updateAccessRequest"
     />
     <LogsPanel
       v-if="activeTab === 'logs'"

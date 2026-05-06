@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import asyncio
 import logging
 import sys
 import uuid
@@ -8,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -61,6 +62,8 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 logger = logging.getLogger("nomera-backend")
+ml_sync_task: asyncio.Task | None = None
+unsynced_camera_ids: set[str] = set()
 
 app = FastAPI(
     title="Nomera Parking Management",
@@ -86,11 +89,29 @@ async def startup_event() -> None:
     await init_db()
     await ensure_bootstrap_admin()
     async with SessionLocal() as db:
+        cameras = (await db.scalars(select(Camera.id))).all()
+        unsynced_camera_ids.update(cameras)
+    global ml_sync_task
+    ml_sync_task = asyncio.create_task(ml_sync_worker(), name="ml-sync-worker")
+    async with SessionLocal() as db:
         try:
             await sync_all_cameras_to_ml(db)
             await ensure_ml_pipeline_running()
+            unsynced_camera_ids.clear()
         except HTTPException:
             logger.warning("Startup ML sync skipped: ML service unavailable", exc_info=True)
+
+
+@app.on_event("shutdown")
+async def shutdown_event() -> None:
+    global ml_sync_task
+    if ml_sync_task and not ml_sync_task.done():
+        ml_sync_task.cancel()
+        try:
+            await ml_sync_task
+        except asyncio.CancelledError:
+            pass
+    ml_sync_task = None
 
 
 async def ensure_bootstrap_admin() -> None:
@@ -166,17 +187,17 @@ async def sync_camera_to_ml(camera: Camera, *, strict: bool = False) -> None:
         "role": infer_ml_camera_role(camera),
     }
     try:
-        await request_ml("DELETE", f"/api/v1/cameras/{camera.id}")
-    except HTTPException:
-        # Ignore when camera is not yet present in ML.
-        pass
-    try:
         await request_ml("POST", "/api/v1/cameras", json=payload)
         logger.info("Camera synced to ML: %s source=%s", camera.id, camera.stream_url)
     except HTTPException:
-        if strict:
-            raise
-        logger.warning("Camera sync to ML failed for %s", camera.id, exc_info=True)
+        try:
+            await request_ml("DELETE", f"/api/v1/cameras/{camera.id}")
+            await request_ml("POST", "/api/v1/cameras", json=payload)
+            logger.info("Camera replaced in ML: %s source=%s", camera.id, camera.stream_url)
+        except HTTPException:
+            if strict:
+                raise
+            logger.warning("Camera sync to ML failed for %s", camera.id, exc_info=True)
 
 
 async def remove_camera_from_ml(camera_id: str, *, strict: bool = False) -> None:
@@ -207,6 +228,29 @@ async def ensure_ml_pipeline_running() -> None:
     if status.get("status") != "running":
         await request_ml("POST", "/api/v1/pipeline/start")
         logger.info("ML pipeline auto-start requested by backend")
+
+
+async def ml_sync_worker() -> None:
+    while True:
+        try:
+            if unsynced_camera_ids:
+                async with SessionLocal() as db:
+                    stmt = select(Camera).where(Camera.id.in_(unsynced_camera_ids))
+                    cameras = (await db.scalars(stmt)).all()
+                present_ids = {camera.id for camera in cameras}
+                for stale_id in list(unsynced_camera_ids):
+                    if stale_id not in present_ids:
+                        unsynced_camera_ids.discard(stale_id)
+                for camera in cameras:
+                    try:
+                        await sync_camera_to_ml(camera, strict=True)
+                        unsynced_camera_ids.discard(camera.id)
+                    except HTTPException:
+                        logger.warning("Deferred camera sync failed for %s", camera.id)
+                await ensure_ml_pipeline_running()
+        except Exception:
+            logger.warning("ML sync worker iteration failed", exc_info=True)
+        await asyncio.sleep(5)
 
 
 @app.post("/api/auth/login", response_model=TokenResponse, tags=["Auth"])
@@ -375,10 +419,16 @@ async def create_camera(
     db.add(camera)
     await db.commit()
     await db.refresh(camera)
-    await sync_camera_to_ml(camera, strict=False)
+    try:
+        await sync_camera_to_ml(camera, strict=True)
+        unsynced_camera_ids.discard(camera.id)
+    except HTTPException:
+        unsynced_camera_ids.add(camera.id)
+        logger.warning("Camera sync deferred for %s", camera.id, exc_info=True)
     try:
         await ensure_ml_pipeline_running()
     except HTTPException:
+        unsynced_camera_ids.add(camera.id)
         logger.warning("Failed to ensure ML pipeline running after camera create", exc_info=True)
     return CameraResponse.model_validate(camera)
 
@@ -397,10 +447,16 @@ async def update_camera(
     camera.stream_url = payload.stream_url
     await db.commit()
     await db.refresh(camera)
-    await sync_camera_to_ml(camera, strict=False)
+    try:
+        await sync_camera_to_ml(camera, strict=True)
+        unsynced_camera_ids.discard(camera.id)
+    except HTTPException:
+        unsynced_camera_ids.add(camera.id)
+        logger.warning("Camera sync deferred for %s", camera.id, exc_info=True)
     try:
         await ensure_ml_pipeline_running()
     except HTTPException:
+        unsynced_camera_ids.add(camera.id)
         logger.warning("Failed to ensure ML pipeline running after camera update", exc_info=True)
     return CameraResponse.model_validate(camera)
 
@@ -410,8 +466,23 @@ async def delete_camera(camera_id: str, db: AsyncSession = Depends(get_db), _: U
     camera = await get_camera_or_404(db, camera_id)
     await db.delete(camera)
     await db.commit()
+    unsynced_camera_ids.discard(camera_id)
     await remove_camera_from_ml(camera_id, strict=False)
     return MessageResponse(message="Camera deleted")
+
+
+@app.post("/api/cameras/upload-video", tags=["Cameras"])
+async def upload_camera_video(
+    file: UploadFile = File(...),
+    _: User = Depends(require_admin),
+) -> dict:
+    uploads_dir = Path(settings.static_dir) / "uploads"
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    suffix = Path(file.filename or "video.mp4").suffix or ".mp4"
+    filename = f"{uuid.uuid4().hex}{suffix}"
+    target = uploads_dir / filename
+    target.write_bytes(await file.read())
+    return {"video_url": f"/static/uploads/{filename}"}
 
 
 @app.get("/api/allowed-plates", response_model=list[AllowedPlateResponse], tags=["AllowedPlates"])
@@ -561,6 +632,30 @@ async def reject_access_request(
     if request.status != RequestStatusEnum.pending.value:
         raise HTTPException(status_code=400, detail="Only pending requests can be rejected")
     request.status = RequestStatusEnum.rejected.value
+    await db.commit()
+    await db.refresh(request)
+    return AccessRequestResponse.model_validate(request)
+
+
+@app.put("/api/access-requests/{request_id}", response_model=AccessRequestResponse, tags=["AccessRequests"])
+async def update_access_request(
+    request_id: str,
+    payload: AccessRequestCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> AccessRequestResponse:
+    request = await db.get(AccessRequest, request_id)
+    if not request:
+        raise HTTPException(status_code=404, detail="Access request not found")
+    await ensure_user_has_parking_access(db, current_user, request.parking_lot_id)
+    if request.status != RequestStatusEnum.pending.value:
+        raise HTTPException(status_code=400, detail="Only pending requests can be edited")
+    await ensure_user_has_parking_access(db, current_user, payload.parking_lot_id)
+    request.parking_lot_id = payload.parking_lot_id
+    request.plate_number = payload.plate_number
+    request.allowed_days = payload.allowed_days
+    request.time_start = payload.time_start
+    request.time_end = payload.time_end
     await db.commit()
     await db.refresh(request)
     return AccessRequestResponse.model_validate(request)

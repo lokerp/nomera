@@ -13,8 +13,9 @@ export class ApiError extends Error {
 
 export async function apiRequest(path, options = {}) {
   const { state, clearSession } = useAuth()
+  const hasFormData = options.body instanceof FormData
   const headers = {
-    'Content-Type': 'application/json',
+    ...(hasFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers || {})
   }
   if (state.token) {

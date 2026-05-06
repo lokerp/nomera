@@ -32,21 +32,31 @@ function openPhoto(item) {
 }
 
 function overlayStyle(item) {
-  if (!item?.bbox || !item.frame_width || !item.frame_height) return {}
-  const x = (item.bbox_x1 / item.frame_width) * 100
-  const y = (item.bbox_y1 / item.frame_height) * 100
-  const w = ((item.bbox_x2 - item.bbox_x1) / item.frame_width) * 100
-  const h = ((item.bbox_y2 - item.bbox_y1) / item.frame_height) * 100
+  if (item?.bbox_x1 === null || item?.bbox_x1 === undefined || !item.frame_width || !item.frame_height) return {}
+  const useNormalized = item.bbox_x2 <= 1 && item.bbox_y2 <= 1
+  const x = useNormalized ? item.bbox_x1 * 100 : (item.bbox_x1 / item.frame_width) * 100
+  const y = useNormalized ? item.bbox_y1 * 100 : (item.bbox_y1 / item.frame_height) * 100
+  const w = useNormalized
+    ? (item.bbox_x2 - item.bbox_x1) * 100
+    : ((item.bbox_x2 - item.bbox_x1) / item.frame_width) * 100
+  const h = useNormalized
+    ? (item.bbox_y2 - item.bbox_y1) * 100
+    : ((item.bbox_y2 - item.bbox_y1) / item.frame_height) * 100
   return { left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` }
 }
 
 function liveOverlayStyle() {
   const item = overlayDetection.value
   if (!item?.bbox || !item.frame_width || !item.frame_height) return {}
-  const x = (item.bbox.x1 / item.frame_width) * 100
-  const y = (item.bbox.y1 / item.frame_height) * 100
-  const w = ((item.bbox.x2 - item.bbox.x1) / item.frame_width) * 100
-  const h = ((item.bbox.y2 - item.bbox.y1) / item.frame_height) * 100
+  const useNormalized = item.bbox.x2 <= 1 && item.bbox.y2 <= 1
+  const x = useNormalized ? item.bbox.x1 * 100 : (item.bbox.x1 / item.frame_width) * 100
+  const y = useNormalized ? item.bbox.y1 * 100 : (item.bbox.y1 / item.frame_height) * 100
+  const w = useNormalized
+    ? (item.bbox.x2 - item.bbox.x1) * 100
+    : ((item.bbox.x2 - item.bbox.x1) / item.frame_width) * 100
+  const h = useNormalized
+    ? (item.bbox.y2 - item.bbox.y1) * 100
+    : ((item.bbox.y2 - item.bbox.y1) / item.frame_height) * 100
   return { left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` }
 }
 

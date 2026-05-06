@@ -14,6 +14,7 @@ const emit = defineEmits([
   'update-parking',
   'delete-parking',
   'save-camera',
+  'update-camera',
   'delete-camera'
 ])
 
@@ -31,8 +32,10 @@ const cameraForm = reactive({
   rtsp_url: '',
   https_url: 'https://cam11.yar-net.ru/dmmZy7y9/mono.m3u8?token=ecf935d922147606ddf99edb965dfd7d',
   mp4_path: '',
+  mp4_file: null,
   mp4_loop: true
 })
+const editCameraId = ref('')
 
 const selectedParking = computed(() => props.parkingLots.find((item) => item.id === props.selectedParkingLotId) || null)
 
@@ -69,7 +72,8 @@ function buildCameraUrl() {
     return cameraForm.https_url.trim()
   }
   const mp4Url = cameraForm.mp4_path.trim()
-  if (!mp4Url) return ''
+  if (!mp4Url && !cameraForm.mp4_file) return ''
+  if (!mp4Url && cameraForm.mp4_file) return '__UPLOAD__'
   if (!cameraForm.mp4_loop) return mp4Url
   if (mp4Url.includes('loop=')) return mp4Url
   return `${mp4Url}${mp4Url.includes('?') ? '&' : '?'}loop=1`
@@ -86,14 +90,58 @@ function submitCamera() {
     localError.value = 'Укажите источник потока камеры.'
     return
   }
-  emit('save-camera', {
+  const payload = {
     id: cameraForm.id.trim(),
     name: cameraForm.name.trim(),
     stream_url: streamUrl,
-    parking_lot_id: props.selectedParkingLotId
-  })
+    parking_lot_id: props.selectedParkingLotId,
+    source_type: cameraForm.source_type,
+    mp4_file: cameraForm.mp4_file,
+    mp4_loop: cameraForm.mp4_loop
+  }
+  if (editCameraId.value) {
+    emit('update-camera', editCameraId.value, payload, resetCameraForm)
+    return
+  }
+  emit('save-camera', payload, resetCameraForm)
+}
+
+function resetCameraForm() {
+  editCameraId.value = ''
   cameraForm.id = ''
   cameraForm.name = ''
+  cameraForm.rtsp_url = ''
+  cameraForm.mp4_path = ''
+  cameraForm.mp4_file = null
+}
+
+function onMp4Selected(event) {
+  const file = event.target.files?.[0]
+  cameraForm.mp4_file = file || null
+}
+
+function startEditCamera(camera) {
+  editCameraId.value = camera.id
+  cameraForm.id = camera.id
+  cameraForm.name = camera.name
+  cameraForm.mp4_file = null
+  const value = camera.stream_url || ''
+  if (value.startsWith('rtsp://')) {
+    cameraForm.source_type = 'rtsp'
+    cameraForm.rtsp_url = value
+    cameraForm.https_url = ''
+    cameraForm.mp4_path = ''
+    return
+  }
+  if (value.includes('.mp4')) {
+    cameraForm.source_type = 'mp4'
+    cameraForm.mp4_path = value
+    cameraForm.rtsp_url = ''
+    cameraForm.https_url = ''
+    return
+  }
+  cameraForm.source_type = 'https'
+  cameraForm.https_url = value
   cameraForm.rtsp_url = ''
   cameraForm.mp4_path = ''
 }
@@ -165,6 +213,7 @@ function detectStreamType(streamUrl) {
           <td><span class="pill-inline">{{ detectStreamType(camera.stream_url) }}</span></td>
           <td class="truncate">{{ camera.stream_url }}</td>
           <td v-if="isAdmin">
+            <button type="button" @click="startEditCamera(camera)">Изменить</button>
             <button type="button" class="danger" @click="emit('delete-camera', camera.id)">Удалить</button>
           </td>
         </tr>
@@ -209,7 +258,15 @@ function detectStreamType(streamUrl) {
         </label>
       </div>
 
-      <button type="submit" class="primary">Добавить камеру</button>
+      <div v-if="cameraForm.source_type === 'mp4'" class="inline-form">
+        <input type="file" accept="video/mp4,video/*" @change="onMp4Selected" />
+        <small class="muted">Можно выбрать локальный файл .mp4 — он будет загружен на сервер.</small>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="primary">{{ editCameraId ? 'Сохранить камеру' : 'Добавить камеру' }}</button>
+        <button v-if="editCameraId" type="button" @click="resetCameraForm">Отмена</button>
+      </div>
       <p v-if="localError" class="error">{{ localError }}</p>
     </form>
   </section>

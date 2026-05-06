@@ -183,7 +183,7 @@ p {
 
 .inline-form {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 8px;
 }
 
@@ -241,7 +241,8 @@ p {
 .thumb {
   width: 72px;
   height: 48px;
-  object-fit: cover;
+  object-fit: contain;
+  background: #020617;
   border-radius: 4px;
   cursor: pointer;
   border: 1px solid #e2e8f0;

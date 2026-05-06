@@ -15,8 +15,6 @@ from fastapi import FastAPI
 from app.api import _state
 from app.api.router import router
 from app.config import settings
-from app.domain.enums import CameraRole
-from app.domain.models import CameraConfig
 from app.infrastructure.detector.nomeroff_detector import NomeroffDetector
 from app.infrastructure.sender.http_event_sender import HttpEventSender
 from app.application.services.detection_service import DetectionService
@@ -65,26 +63,6 @@ async def lifespan(app: FastAPI):
 
     # 5. Keep pipeline always running (24/7), cameras can be added dynamically.
     await service.start()
-
-    # 6. Auto-register default camera if configured
-    default_source = settings.resolved_default_source
-    if default_source:
-        try:
-            role = CameraRole(settings.default_camera_role)
-        except ValueError:
-            role = CameraRole.ENTRY
-
-        default_camera = CameraConfig(
-            camera_id="default",
-            source=default_source,
-            role=role,
-        )
-        await service.add_camera(default_camera)
-        if settings.auto_start:
-            await service.start()
-            logger.info("Default camera started: source=%s role=%s", default_source, role.value)
-        else:
-            logger.info("Default camera registered: source=%s role=%s auto_start=false", default_source, role.value)
 
     logger.info("ML Service ready on http://%s:%d", settings.host, settings.port)
     logger.info("API docs: http://%s:%d/docs", settings.host, settings.port)
