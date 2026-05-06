@@ -19,6 +19,9 @@ const emit = defineEmits([
 ])
 
 const localError = ref('')
+const showParkingForm = ref(false)
+const showCameraForm = ref(false)
+
 const parkingForm = reactive({
   name: '',
   description: ''
@@ -43,12 +46,14 @@ function startEditParking(item) {
   editParkingId.value = item.id
   parkingForm.name = item.name
   parkingForm.description = item.description || ''
+  showParkingForm.value = true
 }
 
 function resetParkingForm() {
   editParkingId.value = ''
   parkingForm.name = ''
   parkingForm.description = ''
+  showParkingForm.value = false
 }
 
 function submitParking() {
@@ -113,6 +118,7 @@ function resetCameraForm() {
   cameraForm.rtsp_url = ''
   cameraForm.mp4_path = ''
   cameraForm.mp4_file = null
+  showCameraForm.value = false
 }
 
 function onMp4Selected(event) {
@@ -125,6 +131,7 @@ function startEditCamera(camera) {
   cameraForm.id = camera.id
   cameraForm.name = camera.name
   cameraForm.mp4_file = null
+  showCameraForm.value = true
   const value = camera.stream_url || ''
   if (value.startsWith('rtsp://')) {
     cameraForm.source_type = 'rtsp'
@@ -154,13 +161,48 @@ function detectStreamType(streamUrl) {
   if (value.startsWith('https://')) return 'HTTPS'
   return 'Другой'
 }
+
+function toggleParkingForm() {
+  if (editParkingId.value) {
+    resetParkingForm()
+    return
+  }
+  showParkingForm.value = !showParkingForm.value
+}
+
+function toggleCameraForm() {
+  if (editCameraId.value) {
+    resetCameraForm()
+    return
+  }
+  showCameraForm.value = !showCameraForm.value
+}
 </script>
 
 <template>
-  <section class="card">
-    <div class="section-header">
-      <h2>Парковки</h2>
-      <span class="muted">{{ parkingLots.length }} шт.</span>
+  <header class="ws-header">
+    <div class="ws-heading">
+      <p class="ws-eyebrow">Рабочая зона</p>
+      <h2>Парковки и камеры</h2>
+      <p class="ws-sub">Выберите площадку, чтобы управлять привязанными камерами и источниками видео.</p>
+    </div>
+    <div class="ws-actions">
+      <button v-if="isAdmin" type="button" @click="toggleParkingForm">
+        {{ showParkingForm ? 'Скрыть форму парковки' : (editParkingId ? 'Редактировать парковку' : 'Новая парковка') }}
+      </button>
+      <button v-if="isAdmin && selectedParkingLotId" type="button" class="primary" @click="toggleCameraForm">
+        {{ showCameraForm ? 'Скрыть форму камеры' : (editCameraId ? 'Редактировать камеру' : 'Добавить камеру') }}
+      </button>
+    </div>
+  </header>
+
+  <section class="surface">
+    <div class="surface-head">
+      <div>
+        <h3>Парковки</h3>
+        <p class="muted">Выберите площадку для работы с камерами и допусками.</p>
+      </div>
+      <span class="counter-pill">{{ parkingLots.length }}</span>
     </div>
 
     <div class="parking-list">
@@ -175,99 +217,144 @@ function detectStreamType(streamUrl) {
         <span>{{ item.name }}</span>
         <small class="muted">{{ item.description || 'Без описания' }}</small>
       </button>
-      <div v-if="!parkingLots.length" class="empty-card">Пока нет парковок. Создайте первую.</div>
+      <div v-if="!parkingLots.length" class="empty-state">
+        <p><strong>Парковок пока нет.</strong></p>
+        <p class="muted">Создайте первую парковку, чтобы начать привязывать камеры и допуски.</p>
+      </div>
     </div>
 
-    <form v-if="isAdmin" class="inline-form" @submit.prevent="submitParking">
-      <input v-model.trim="parkingForm.name" required placeholder="Название парковки" />
-      <input v-model.trim="parkingForm.description" placeholder="Описание (опционально)" />
-      <button type="submit" class="primary">{{ editParkingId ? 'Сохранить' : 'Добавить парковку' }}</button>
-      <button v-if="editParkingId" type="button" @click="resetParkingForm">Отмена</button>
-    </form>
-
-    <div v-if="isAdmin && selectedParking" class="actions">
-      <button type="button" @click="startEditParking(selectedParking)">Редактировать выбранную</button>
-      <button type="button" class="danger" @click="emit('delete-parking', selectedParking.id)">Удалить выбранную</button>
+    <div v-if="isAdmin && selectedParking" class="surface-foot">
+      <button type="button" @click="startEditParking(selectedParking)">Изменить парковку</button>
+      <button type="button" class="danger" @click="emit('delete-parking', selectedParking.id)">Удалить парковку</button>
     </div>
   </section>
 
-  <section class="card">
-    <div class="section-header">
-      <h2>Камеры выбранной парковки</h2>
-      <span class="muted">{{ selectedParking?.name || 'Парковка не выбрана' }}</span>
+  <section v-if="isAdmin && showParkingForm" class="surface surface--form">
+    <div class="surface-head">
+      <div>
+        <h3>{{ editParkingId ? 'Изменить парковку' : 'Новая парковка' }}</h3>
+        <p class="muted">Минимум: название площадки. Описание помогает быстро ориентироваться при росте сети.</p>
+      </div>
     </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Название</th>
-          <th>Тип источника</th>
-          <th>Ссылка / путь</th>
-          <th v-if="isAdmin">Действия</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="camera in cameras" :key="camera.id">
-          <td>{{ camera.id }}</td>
-          <td>{{ camera.name }}</td>
-          <td><span class="pill-inline">{{ detectStreamType(camera.stream_url) }}</span></td>
-          <td class="truncate">{{ camera.stream_url }}</td>
-          <td v-if="isAdmin">
-            <button type="button" @click="startEditCamera(camera)">Изменить</button>
-            <button type="button" class="danger" @click="emit('delete-camera', camera.id)">Удалить</button>
-          </td>
-        </tr>
-        <tr v-if="!cameras.length">
-          <td :colspan="isAdmin ? 5 : 4" class="empty-cell">В этой парковке пока нет камер</td>
-        </tr>
-      </tbody>
-    </table>
+    <form class="form-grid" @submit.prevent="submitParking">
+      <label class="field">
+        Название
+        <input v-model.trim="parkingForm.name" required placeholder="Например, Гараж 1" />
+      </label>
+      <label class="field">
+        Описание
+        <input v-model.trim="parkingForm.description" placeholder="Например, главный въезд" />
+      </label>
+      <div class="form-actions field--full">
+        <button type="submit" class="primary">{{ editParkingId ? 'Сохранить парковку' : 'Создать парковку' }}</button>
+        <button type="button" @click="resetParkingForm">Отмена</button>
+      </div>
+    </form>
+  </section>
 
-    <form v-if="isAdmin" class="stacked-form" @submit.prevent="submitCamera">
-      <div class="inline-form">
-        <input v-model.trim="cameraForm.id" required placeholder="Идентификатор камеры (например, gate-1)" />
+  <section class="surface">
+    <div class="surface-head">
+      <div>
+        <h3>Камеры площадки</h3>
+        <p class="muted">{{ selectedParking?.name || 'Парковка не выбрана' }}</p>
+      </div>
+      <span class="counter-pill">{{ cameras.length }}</span>
+    </div>
+    <div class="data-region">
+      <table class="table table--dense">
+        <thead>
+          <tr>
+            <th>Идентификатор</th>
+            <th>Название</th>
+            <th>Тип</th>
+            <th>Источник</th>
+            <th v-if="isAdmin">Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="camera in cameras" :key="camera.id">
+            <td class="data-code">{{ camera.id }}</td>
+            <td>{{ camera.name }}</td>
+            <td><span class="pill-inline">{{ detectStreamType(camera.stream_url) }}</span></td>
+            <td class="truncate data-code">{{ camera.stream_url }}</td>
+            <td v-if="isAdmin">
+              <div class="row-actions">
+                <button type="button" @click="startEditCamera(camera)">Изменить</button>
+                <button type="button" class="danger" @click="emit('delete-camera', camera.id)">Удалить</button>
+              </div>
+            </td>
+          </tr>
+          <tr v-if="!cameras.length">
+            <td :colspan="isAdmin ? 5 : 4" class="empty-cell">
+              <div class="empty-inline">
+                <p><strong>Камеры еще не привязаны.</strong></p>
+                <p class="muted">Добавьте RTSP, HLS поток или тестовый MP4, чтобы запустить распознавание.</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section v-if="isAdmin && showCameraForm" class="surface surface--form">
+    <div class="surface-head">
+      <div>
+        <h3>{{ editCameraId ? 'Изменить камеру' : 'Новая камера' }}</h3>
+        <p class="muted">Сначала задайте идентификатор и название, затем выберите тип источника.</p>
+      </div>
+    </div>
+    <form class="form-grid" @submit.prevent="submitCamera">
+      <label class="field">
+        Идентификатор
+        <input v-model.trim="cameraForm.id" required placeholder="например, gate-1" />
+      </label>
+      <label class="field">
+        Название
         <input v-model.trim="cameraForm.name" required placeholder="Название камеры" />
+      </label>
+      <label class="field">
+        Тип источника
         <select v-model="cameraForm.source_type">
           <option value="rtsp">RTSP</option>
           <option value="https">HTTPS / HLS (.m3u8)</option>
-          <option value="mp4">MP4 тест (loop)</option>
+          <option value="mp4">MP4 тест (цикл)</option>
         </select>
-      </div>
+      </label>
 
-      <input
-        v-if="cameraForm.source_type === 'rtsp'"
-        v-model.trim="cameraForm.rtsp_url"
-        required
-        placeholder="rtsp://логин:пароль@host:port/stream"
-      />
-      <input
-        v-else-if="cameraForm.source_type === 'https'"
-        v-model.trim="cameraForm.https_url"
-        required
-        placeholder="https://host/path/stream.m3u8?token=..."
-      />
-      <div v-else class="inline-form">
-        <input
-          v-model.trim="cameraForm.mp4_path"
-          required
-          placeholder="https://host/test.mp4 или /opt/videos/test.mp4"
-        />
-        <label class="checkbox">
-          <input v-model="cameraForm.mp4_loop" type="checkbox" />
-          Крутить в цикле (loop=1)
+      <label v-if="cameraForm.source_type === 'rtsp'" class="field field--full">
+        RTSP адрес
+        <input v-model.trim="cameraForm.rtsp_url" required placeholder="rtsp://логин:пароль@host:port/stream" />
+      </label>
+      <label v-else-if="cameraForm.source_type === 'https'" class="field field--full">
+        HTTPS / HLS адрес
+        <input v-model.trim="cameraForm.https_url" required placeholder="https://host/path/stream.m3u8?token=..." />
+      </label>
+      <template v-else>
+        <label class="field field--full">
+          Путь к MP4
+          <input
+            v-model.trim="cameraForm.mp4_path"
+            required
+            placeholder="https://host/test.mp4 или /opt/videos/test.mp4"
+          />
         </label>
-      </div>
+        <label class="field">
+          Локальный файл
+          <input type="file" accept="video/mp4,video/*" @change="onMp4Selected" />
+        </label>
+        <label class="checkbox field-inline">
+          <input v-model="cameraForm.mp4_loop" type="checkbox" />
+          Воспроизводить по кругу (loop=1)
+        </label>
+        <p class="hint field--full">Локальный файл .mp4 будет загружен на сервер и подменит URL.</p>
+      </template>
 
-      <div v-if="cameraForm.source_type === 'mp4'" class="inline-form">
-        <input type="file" accept="video/mp4,video/*" @change="onMp4Selected" />
-        <small class="muted">Можно выбрать локальный файл .mp4 — он будет загружен на сервер.</small>
+      <div class="form-actions field--full">
+        <button type="submit" class="primary">{{ editCameraId ? 'Сохранить камеру' : 'Создать камеру' }}</button>
+        <button type="button" @click="resetCameraForm">Отмена</button>
       </div>
-
-      <div class="actions">
-        <button type="submit" class="primary">{{ editCameraId ? 'Сохранить камеру' : 'Добавить камеру' }}</button>
-        <button v-if="editCameraId" type="button" @click="resetCameraForm">Отмена</button>
-      </div>
-      <p v-if="localError" class="error">{{ localError }}</p>
+      <p v-if="localError" class="error field--full" role="alert" aria-live="polite">{{ localError }}</p>
     </form>
   </section>
 </template>

@@ -23,8 +23,10 @@ let reconnectTimer = null
 let hls = null
 
 const liveCamera = computed(() => props.cameras.find((camera) => camera.id === liveCameraId.value) || null)
-const overlayDetection = computed(() => {
-  return latestConfirmedByCamera.value[liveCameraId.value] || null
+const overlayDetection = computed(() => latestConfirmedByCamera.value[liveCameraId.value] || null)
+const liveStreamHint = computed(() => {
+  if (!liveCamera.value) return 'Выберите камеру в селекторе ниже.'
+  return `Источник: ${liveCamera.value.stream_url}`
 })
 
 async function openPhoto(item) {
@@ -147,15 +149,31 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="card">
-    <h2>Прямой эфир камеры</h2>
-    <div class="inline-form">
+  <header class="ws-header">
+    <div class="ws-heading">
+      <p class="ws-eyebrow">Рабочая зона</p>
+      <h2>История и аналитика</h2>
+      <p class="ws-sub">Прямой эфир камеры, ключевые показатели и журнал распознаваний за выбранную парковку.</p>
+    </div>
+    <div class="ws-actions">
       <label class="inline-field">
-        Камера в live
+        Камера в эфире
         <select v-model="liveCameraId">
           <option v-for="camera in cameras" :key="camera.id" :value="camera.id">{{ camera.name }}</option>
         </select>
       </label>
+    </div>
+  </header>
+
+  <section class="surface surface--media">
+    <div class="surface-head">
+      <div>
+        <h3>Прямой эфир</h3>
+        <p class="muted">{{ liveStreamHint }}</p>
+      </div>
+      <span class="status-tag" :class="overlayDetection ? 'status-tag--ok' : 'status-tag--off'">
+        {{ overlayDetection ? 'Распознано сейчас' : 'Ожидание распознавания' }}
+      </span>
     </div>
     <div class="live-wrap">
       <video ref="liveVideoRef" class="live-video" controls autoplay muted playsinline />
@@ -163,31 +181,42 @@ onBeforeUnmount(() => {
         <span>{{ overlayDetection.plate_text }}</span>
       </div>
     </div>
-    <p v-if="liveError" class="error">{{ liveError }}</p>
+    <p v-if="liveError" class="error" role="alert" aria-live="polite">{{ liveError }}</p>
   </section>
 
-  <section class="card">
-    <h2>Аналитика за сегодня</h2>
-    <div class="stats-grid">
-      <article class="stat-card">
-        <span>Распознаваний</span>
-        <strong>{{ stats.recognitions_today || 0 }}</strong>
+  <section class="surface">
+    <div class="surface-head">
+      <div>
+        <h3>Аналитика за сегодня</h3>
+        <p class="muted">Сводные показатели обновляются в реальном времени.</p>
+      </div>
+    </div>
+    <div class="kpi-grid">
+      <article class="kpi">
+        <span class="kpi-label">Распознаваний</span>
+        <strong class="kpi-value">{{ stats.recognitions_today || 0 }}</strong>
+        <span class="kpi-hint muted">Подтвержденных событий за день.</span>
       </article>
-      <article class="stat-card">
-        <span>Уникальных машин</span>
-        <strong>{{ stats.unique_plates_today || 0 }}</strong>
+      <article class="kpi">
+        <span class="kpi-label">Уникальных машин</span>
+        <strong class="kpi-value">{{ stats.unique_plates_today || 0 }}</strong>
+        <span class="kpi-hint muted">Сколько разных номеров видели.</span>
       </article>
-      <article class="stat-card">
-        <span>Пиковое время</span>
-        <strong>{{ stats.peak_hour || '-' }}</strong>
+      <article class="kpi">
+        <span class="kpi-label">Пиковое время</span>
+        <strong class="kpi-value">{{ stats.peak_hour || '—' }}</strong>
+        <span class="kpi-hint muted">Час с наибольшей активностью.</span>
       </article>
     </div>
   </section>
 
-  <section class="card">
-    <div class="section-header">
-      <h2>Логи распознаваний</h2>
-      <label class="inline-field">
+  <section class="surface">
+    <div class="surface-head">
+      <div>
+        <h3>Журнал распознаваний</h3>
+        <p class="muted">Последние подтвержденные события на выбранной парковке.</p>
+      </div>
+      <label class="inline-field inline-field--end">
         Фильтр по камере
         <select :value="selectedCameraId" @change="emit('change-camera-filter', $event.target.value)">
           <option value="">Все камеры</option>
@@ -195,37 +224,51 @@ onBeforeUnmount(() => {
         </select>
       </label>
     </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>ID камеры</th>
-          <th>Номер</th>
-          <th>Дата/время</th>
-          <th>Фото</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in logs" :key="item.id">
-          <td>{{ item.camera_id }}</td>
-          <td>{{ item.plate_number }}</td>
-          <td>{{ new Date(item.timestamp).toLocaleString() }}</td>
-          <td>
-            <div v-if="item.photo_url" class="thumb-wrap" @click="openPhoto(item)">
-              <img :src="`${API_BASE}${item.photo_url}`" alt="scan" class="thumb" />
-            </div>
-            <span v-else class="muted">нет</span>
-          </td>
-        </tr>
-        <tr v-if="!logs.length">
-          <td colspan="4" class="empty-cell">Логи пока пустые</td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="data-region">
+      <table class="table table--dense">
+        <thead>
+          <tr>
+            <th>Камера</th>
+            <th>Номер</th>
+            <th>Время</th>
+            <th>Снимок</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in logs" :key="item.id">
+            <td class="data-code">{{ item.camera_id }}</td>
+            <td class="data-code">{{ item.plate_number }}</td>
+            <td class="data-code">{{ new Date(item.timestamp).toLocaleString() }}</td>
+            <td>
+              <button
+                v-if="item.photo_url"
+                type="button"
+                class="thumb-wrap thumb-button"
+                @click="openPhoto(item)"
+                :aria-label="`Открыть фото распознавания ${item.plate_number}`"
+              >
+                <img :src="`${API_BASE}${item.photo_url}`" alt="scan" class="thumb" />
+              </button>
+              <span v-else class="muted">нет</span>
+            </td>
+          </tr>
+          <tr v-if="!logs.length">
+            <td colspan="4" class="empty-cell">
+              <div class="empty-inline">
+                <p><strong>Событий пока нет.</strong></p>
+                <p class="muted">Запустите распознавание или подождите подтвержденных событий.</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <div v-if="selectedPhoto" class="modal" @click="selectedPhoto = ''">
-    <div class="modal-photo-wrap">
-      <img :src="`${API_BASE}${selectedPhoto.photo_url}`" alt="full" class="modal-img" />
+    <div class="modal-photo-wrap" @click.stop>
+      <button type="button" class="modal-close" @click="selectedPhoto = ''">Закрыть фото</button>
+      <img :src="`${API_BASE}${selectedPhoto.photo_url}`" :alt="`Фото распознавания ${selectedPhoto.plate_number}`" class="modal-img" />
       <div
         v-if="selectedPhoto.bbox_x1 !== null && selectedPhoto.frame_width > 0"
         class="bbox-modal"

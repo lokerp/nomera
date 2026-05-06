@@ -38,20 +38,24 @@ async function submit() {
 
 <template>
   <main class="auth-page">
-    <form class="card auth-card" @submit.prevent="submit">
-      <h1>Система парковки</h1>
-      <p>Войдите, чтобы открыть панель управления парковками.</p>
-
-      <label>
-        Логин
-        <input v-model.trim="form.username" autocomplete="username" placeholder="Введите логин" />
-      </label>
-      <label>
-        Пароль
-        <input v-model="form.password" type="password" autocomplete="current-password" placeholder="Введите пароль" />
-      </label>
-      <button type="submit" class="primary" :disabled="loading">{{ loading ? 'Вход...' : 'Войти' }}</button>
-      <p v-if="error" class="error">{{ error }}</p>
-    </form>
+    <section class="auth-shell">
+      <header class="auth-intro">
+        <p class="auth-kicker">Nomera</p>
+        <h1>Контроль въезда и парковок</h1>
+        <p>Войдите в операционную панель, чтобы управлять камерами, допусками и журналом распознаваний.</p>
+      </header>
+      <form class="auth-form" @submit.prevent="submit">
+        <label>
+          Логин
+          <input v-model.trim="form.username" autocomplete="username" placeholder="Введите логин" />
+        </label>
+        <label>
+          Пароль
+          <input v-model="form.password" type="password" autocomplete="current-password" placeholder="Введите пароль" />
+        </label>
+        <button type="submit" class="primary" :disabled="loading">{{ loading ? 'Вход...' : 'Войти' }}</button>
+        <p v-if="error" class="error" role="alert" aria-live="polite">{{ error }}</p>
+      </form>
+    </section>
   </main>
 </template>

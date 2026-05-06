@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-06T12:55:00.000Z",
+  "title": "Design System: Nomera Operations UI",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Primary",
+        "canonical": "#0ea5e9",
+        "tonalRamp": ["#08212f", "#0a3a52", "#0d5475", "#0f6e98", "#1189bb", "#14a7e5", "#45baec", "#d7f0fb"]
+      },
+      "primary-strong": {
+        "role": "primary",
+        "displayName": "Primary Strong",
+        "canonical": "#0284c7",
+        "tonalRamp": ["#041f2f", "#053650", "#074d71", "#086593", "#0a7cb4", "#0295de", "#39afea", "#d6eef9"]
+      },
+      "neutral-bg": {
+        "role": "neutral",
+        "displayName": "Neutral Background",
+        "canonical": "#f3f6fb",
+        "tonalRamp": ["#23262b", "#373a41", "#4b4e56", "#5f6370", "#787d8c", "#9ea4b4", "#c7cedd", "#f3f6fb"]
+      },
+      "neutral-surface": {
+        "role": "neutral",
+        "displayName": "Neutral Surface",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#242629", "#393b3f", "#4f5156", "#666970", "#80848c", "#a6abb4", "#cdd2dc", "#ffffff"]
+      },
+      "neutral-text": {
+        "role": "neutral",
+        "displayName": "Neutral Text",
+        "canonical": "#0f172a",
+        "tonalRamp": ["#0b101b", "#141d30", "#1d2945", "#25355b", "#2f4371", "#3f598f", "#5676b6", "#d3ddf3"]
+      },
+      "neutral-muted": {
+        "role": "neutral",
+        "displayName": "Neutral Muted",
+        "canonical": "#64748b",
+        "tonalRamp": ["#161a20", "#242b34", "#313b48", "#3f4b5b", "#4d5c6f", "#64748b", "#95a0b0", "#e5e9ef"]
+      },
+      "neutral-border": {
+        "role": "neutral",
+        "displayName": "Neutral Border",
+        "canonical": "#dbe5ef",
+        "tonalRamp": ["#23272c", "#353b43", "#474f5a", "#59646f", "#728091", "#98aabf", "#b8c8d9", "#dbe5ef"]
+      },
+      "success": {
+        "role": "secondary",
+        "displayName": "Success",
+        "canonical": "#22c55e",
+        "tonalRamp": ["#0d2315", "#143922", "#1a4f2f", "#20653c", "#237c4a", "#22c55e", "#58d285", "#dbf5e6"]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Danger",
+        "canonical": "#ef4444",
+        "tonalRamp": ["#2b1111", "#451b1b", "#5f2525", "#7a2f2f", "#963939", "#b94444", "#ef4444", "#fbe1e1"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Top-level page heading anchors."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section-level anchors inside cards and panels."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Subsection and component-local title labels."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default text for data tables, forms, and helper content."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Compact labels, chips, and micro-interface markers."
+      }
+    },
+    "shadows": [
+      {
+        "name": "ambient-card-lift",
+        "value": "0 6px 20px rgba(15, 23, 42, 0.04)",
+        "purpose": "Default card presence on dashboard surfaces."
+      },
+      {
+        "name": "overlay-lift",
+        "value": "0 10px 26px rgba(15, 23, 42, 0.12)",
+        "purpose": "Toast and transient overlay emphasis."
+      },
+      {
+        "name": "focused-panel-lift",
+        "value": "0 14px 40px rgba(15, 23, 42, 0.08)",
+        "purpose": "Auth and modal-focused surfaces."
+      }
+    ],
+    "motion": [
+      {
+        "name": "interaction-fast",
+        "value": "160ms ease-out",
+        "purpose": "Default control feedback timing."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "md-collapse",
+        "value": "900px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Default action trigger for create and submit flows.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\">Добавить камеру</button>",
+      "css": ".ds-btn-primary{height:36px;padding:0 12px;border:1px solid #0ea5e9;border-radius:6px;background:#0ea5e9;color:#ffffff;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:transform 160ms ease-out,background-color 160ms ease-out,border-color 160ms ease-out}.ds-btn-primary:hover{transform:translateY(-1px);background:#0284c7;border-color:#0284c7}.ds-btn-primary:focus-visible{outline:2px solid #0284c7;outline-offset:2px}.ds-btn-primary:active{transform:translateY(0)}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive action control with explicit risk semantics.",
+      "html": "<button class=\"ds-btn-danger\" type=\"button\">Удалить</button>",
+      "css": ".ds-btn-danger{height:36px;padding:0 12px;border:1px solid #ef4444;border-radius:6px;background:#ffffff;color:#b91c1c;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:transform 160ms ease-out,background-color 160ms ease-out}.ds-btn-danger:hover{transform:translateY(-1px);background:#fff5f5}.ds-btn-danger:focus-visible{outline:2px solid #ef4444;outline-offset:2px}.ds-btn-danger:active{transform:translateY(0)}"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Operational form field for IDs, names, and stream URLs.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Название камеры</span><input class=\"ds-input\" placeholder=\"Например, gate-1\" /></label>",
+      "css": ".ds-field{display:grid;gap:6px;max-width:360px}.ds-field-label{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;font-weight:600;color:#334155}.ds-input{height:36px;padding:0 10px;border:1px solid #c5d2df;border-radius:6px;background:#ffffff;color:#0f172a;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;transition:border-color 160ms ease-out,box-shadow 160ms ease-out}.ds-input:hover{border-color:#aab9c9}.ds-input:focus-visible{outline:none;border-color:#0ea5e9;box-shadow:0 0 0 3px rgba(14,165,233,0.2)}"
+    },
+    {
+      "name": "Tab Navigation",
+      "kind": "nav",
+      "refersTo": "chip-info",
+      "description": "Top-level dashboard navigation with active pill state.",
+      "html": "<nav class=\"ds-tabs\"><button class=\"ds-tab\">Парковки</button><button class=\"ds-tab ds-tab-active\">Допуски и заявки</button><button class=\"ds-tab\">История и аналитика</button></nav>",
+      "css": ".ds-tabs{display:flex;gap:8px;flex-wrap:wrap}.ds-tab{height:36px;padding:0 12px;border:1px solid #c5d2df;border-radius:999px;background:#ffffff;color:#111827;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:background-color 160ms ease-out,border-color 160ms ease-out,color 160ms ease-out}.ds-tab:hover{background:#f8fbff}.ds-tab:focus-visible{outline:2px solid #0284c7;outline-offset:2px}.ds-tab-active{border-color:#1d4ed8;background:#e8efff;color:#1d4ed8}"
+    },
+    {
+      "name": "Panel Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Primary container for related operational tasks and data tables.",
+      "html": "<article class=\"ds-card\"><h3 class=\"ds-card-title\">Разрешенные номера</h3><p class=\"ds-card-copy\">Список актуальных допусков для выбранной парковки.</p></article>",
+      "css": ".ds-card{display:grid;gap:10px;padding:14px;border:1px solid #dbe5ef;border-radius:14px;background:#ffffff;box-shadow:0 6px 20px rgba(15,23,42,0.04);max-width:460px}.ds-card-title{margin:0;color:#0f172a;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:18px;font-weight:700;line-height:1.3}.ds-card-copy{margin:0;color:#64748b;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.45}"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "refersTo": "chip-info",
+      "description": "Compact inline badge for stream type and short status markers.",
+      "html": "<span class=\"ds-chip\">HTTPS (HLS)</span>",
+      "css": ".ds-chip{display:inline-flex;align-items:center;height:24px;padding:0 8px;border:1px solid #bfdbfe;border-radius:999px;background:#eff6ff;color:#1e3a8a;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;font-weight:600;white-space:nowrap}.ds-chip:hover{background:#e3efff}.ds-chip:focus-visible{outline:2px solid #1d4ed8;outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Calm Control Atlas",
+    "overview": "This system is an approachable operations surface for people making repetitive, high-responsibility decisions. The visual language keeps state and actions obvious first, then supports speed with stable spacing, familiar control shapes, and clear status color semantics.\n\nThe interface rejects decorative noise and favors practical legibility. Card groups, table rows, pills, and action buttons exist to organize operational choices, not to perform as visual theater. The dominant rhythm is medium density with generous grouping boundaries so users can parse quickly under live conditions.\n\nThis system explicitly rejects the anti-references from PRODUCT.md: a noisy dark-neon monitoring dashboard, over-styled marketing visuals, and dense legacy enterprise clutter.",
+    "keyCharacteristics": [
+      "Calm neutral canvas with one dominant operational accent (blue).",
+      "Compact controls with predictable heights (36px) and small radius corners (6px to 14px).",
+      "Status semantics are literal and consistent (green success, red danger, slate neutral).",
+      "Information is grouped by task units, not decorative patterns."
+    ],
+    "rules": [
+      {
+        "name": "The Single Accent Rule",
+        "body": "Blue is the only non-status accent. If an element is not a primary interaction or selected state, it does not use primary blue.",
+        "section": "colors"
+      },
+      {
+        "name": "The Literal Status Rule",
+        "body": "Green means confirmed success, red means destructive or failed state. Never invert these semantics.",
+        "section": "colors"
+      },
+      {
+        "name": "The Fast Parse Rule",
+        "body": "Hierarchy must be obvious in one scan by weight and size changes, not by decorative color shifts.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat at Rest Rule",
+        "body": "Data surfaces are mostly flat at rest; stronger elevation appears only for overlays or context shifts.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep primary controls at 36px height with 6px radius to preserve scan consistency across forms and tables.",
+      "Do use the blue accent family (#0ea5e9, #0284c7) only for active selections and primary actions.",
+      "Do keep panel borders visible (#dbe5ef or #c5d2df) to segment operational groups cleanly.",
+      "Do keep success and danger semantics literal (#22c55e / #ef4444) for decision clarity."
+    ],
+    "donts": [
+      "Don't build a noisy dark-neon monitoring dashboard.",
+      "Don't introduce over-styled marketing visuals into operational surfaces.",
+      "Don't recreate dense legacy enterprise clutter through excessive compression or weak grouping.",
+      "Don't use gradient text, decorative glass effects, or colored side-stripe borders as accents."
+    ]
+  }
+}

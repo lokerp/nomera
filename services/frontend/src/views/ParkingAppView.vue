@@ -33,6 +33,18 @@ const { showToast } = useToast()
 
 const visibleTabs = computed(() => (isAdmin.value ? tabs : tabs.filter((tab) => tab !== 'users')))
 const roleLabel = computed(() => (state.user?.role === 'admin' ? 'Администратор' : 'Охранник'))
+const activeTabHint = computed(
+  () =>
+    ({
+      cameras: 'Парковки, камеры и видеопотоки',
+      plates: 'Заявки и постоянные допуски',
+      logs: 'События распознавания и аналитика',
+      users: 'Учетные записи и доступы'
+    })[activeTab.value]
+)
+const selectedParkingName = computed(
+  () => parkingLots.value.find((item) => item.id === selectedParkingLotId.value)?.name || 'Парковка не выбрана'
+)
 const tabLabels = {
   cameras: 'Парковки',
   plates: 'Допуски и заявки',
@@ -326,6 +338,10 @@ function logout() {
   router.push({ name: 'login' })
 }
 
+async function manualRefresh() {
+  await refreshActiveTab()
+}
+
 function handleConfirmedDetection(payload) {
   const currentParking = selectedParkingLotId.value
   if (activeTab.value !== 'logs' || !currentParking) return
@@ -373,76 +389,98 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="dashboard">
-    <header class="dashboard-header">
-      <div>
-        <h1>Панель управления парковкой</h1>
-        <p>{{ state.user?.username }} · {{ roleLabel }}</p>
+  <main class="ops-shell">
+    <header class="ops-topbar">
+      <div class="ops-brand">
+        <p class="ops-kicker">Nomera</p>
+        <h1>Операционная панель парковки</h1>
       </div>
-      <div class="header-actions">
+      <div class="ops-toolbar">
+        <div class="ops-context">
+          <p>{{ state.user?.username }}</p>
+          <span>{{ roleLabel }}</span>
+        </div>
+        <button type="button" @click="manualRefresh">Обновить</button>
         <button type="button" class="danger" @click="logout">Выйти</button>
       </div>
     </header>
 
-    <nav class="tab-row">
-      <button
-        v-for="tab in visibleTabs"
-        :key="tab"
-        :class="{ active: tab === activeTab }"
-        type="button"
-        @click="activeTab = tab"
-      >
-        {{ tabLabels[tab] }}
-      </button>
-    </nav>
+    <aside class="ops-rail">
+      <p class="ops-rail-title">Разделы</p>
+      <nav class="ops-tabs">
+        <button
+          v-for="tab in visibleTabs"
+          :key="tab"
+          :class="{ active: tab === activeTab }"
+          type="button"
+          :aria-current="tab === activeTab ? 'page' : undefined"
+          @click="activeTab = tab"
+        >
+          {{ tabLabels[tab] }}
+        </button>
+      </nav>
+      <div class="ops-active-summary">
+        <p class="ops-active-label">{{ tabLabels[activeTab] }}</p>
+        <p class="ops-active-text">{{ activeTabHint }}</p>
+      </div>
+    </aside>
 
-    <p v-if="error" class="error">{{ error }}</p>
-    <p v-if="loading" class="muted">Загрузка...</p>
+    <section class="ops-main">
+      <div class="ops-status-row">
+        <div class="ops-chip">
+          <span>Текущая парковка</span>
+          <strong>{{ selectedParkingName }}</strong>
+        </div>
+        <p v-if="loading" class="muted" aria-live="polite">Синхронизация данных...</p>
+      </div>
 
-    <CamerasPanel
-      v-if="activeTab === 'cameras'"
-      :parking-lots="parkingLots"
-      :cameras="cameras"
-      :is-admin="isAdmin"
-      :selected-parking-lot-id="selectedParkingLotId"
-      @select-parking="selectedParkingLotId = $event"
-      @create-parking="createParkingLot"
-      @update-parking="updateParkingLot"
-      @delete-parking="deleteParkingLot"
-      @save-camera="createCamera"
-      @update-camera="updateCamera"
-      @delete-camera="deleteCamera"
-    />
-    <PlatesPanel
-      v-if="activeTab === 'plates'"
-      :pending-requests="pendingRequests"
-      :allowed-plates="allowedPlates"
-      :selected-parking-lot-id="selectedParkingLotId"
-      @approve="approveRequest"
-      @reject="rejectRequest"
-      @save-plate="createAllowedPlate"
-      @update-plate="updateAllowedPlate"
-      @delete-plate="deleteAllowedPlate"
-      @create-request="createAccessRequest"
-      @update-request="updateAccessRequest"
-    />
-    <LogsPanel
-      v-if="activeTab === 'logs'"
-      :logs="scanLogs"
-      :stats="stats"
-      :cameras="cameras"
-      :token="state.token"
-      :selected-camera-id="logsCameraFilter"
-      @change-camera-filter="logsCameraFilter = $event"
-      @confirmed-detection="handleConfirmedDetection"
-    />
-    <UsersPanel
-      v-if="activeTab === 'users' && isAdmin"
-      :users="users"
-      :parking-lots="parkingLots"
-      @save-user="createUser"
-      @delete-user="deleteUser"
-    />
+      <p v-if="error" class="error ops-error" role="alert" aria-live="polite">{{ error }}</p>
+
+      <CamerasPanel
+        v-if="activeTab === 'cameras'"
+        :parking-lots="parkingLots"
+        :cameras="cameras"
+        :is-admin="isAdmin"
+        :selected-parking-lot-id="selectedParkingLotId"
+        @select-parking="selectedParkingLotId = $event"
+        @create-parking="createParkingLot"
+        @update-parking="updateParkingLot"
+        @delete-parking="deleteParkingLot"
+        @save-camera="createCamera"
+        @update-camera="updateCamera"
+        @delete-camera="deleteCamera"
+      />
+      <PlatesPanel
+        v-if="activeTab === 'plates'"
+        :pending-requests="pendingRequests"
+        :allowed-plates="allowedPlates"
+        :selected-parking-lot-id="selectedParkingLotId"
+        @approve="approveRequest"
+        @reject="rejectRequest"
+        @save-plate="createAllowedPlate"
+        @update-plate="updateAllowedPlate"
+        @delete-plate="deleteAllowedPlate"
+        @create-request="createAccessRequest"
+        @update-request="updateAccessRequest"
+      />
+      <LogsPanel
+        v-if="activeTab === 'logs'"
+        :logs="scanLogs"
+        :stats="stats"
+        :cameras="cameras"
+        :token="state.token"
+        :selected-camera-id="logsCameraFilter"
+        @change-camera-filter="logsCameraFilter = $event"
+        @confirmed-detection="handleConfirmedDetection"
+      />
+      <UsersPanel
+        v-if="activeTab === 'users' && isAdmin"
+        :users="users"
+        :parking-lots="parkingLots"
+        @save-user="createUser"
+        @delete-user="deleteUser"
+      />
+    </section>
     <ToastStack />
   </main>
 </template>
