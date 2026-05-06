@@ -18,6 +18,7 @@ const liveVideoRef = ref(null)
 const liveCameraId = ref('')
 const latestConfirmedByCamera = ref({})
 const liveError = ref('')
+const liveAspectRatio = ref(16 / 9)
 let websocket = null
 let reconnectTimer = null
 let hls = null
@@ -28,6 +29,24 @@ const liveStreamHint = computed(() => {
   if (!liveCamera.value) return 'Выберите камеру в селекторе ниже.'
   return `Источник: ${liveCamera.value.stream_url}`
 })
+const liveFrameStyle = computed(() => {
+  const ratio = liveAspectRatio.value && Number.isFinite(liveAspectRatio.value) ? liveAspectRatio.value : 16 / 9
+  return {
+    aspectRatio: String(ratio),
+    maxWidth: `calc(70vh * ${ratio})`
+  }
+})
+
+function syncVideoAspect() {
+  const video = liveVideoRef.value
+  if (video && video.videoWidth && video.videoHeight) {
+    liveAspectRatio.value = video.videoWidth / video.videoHeight
+  }
+}
+
+function onVideoMetadata() {
+  syncVideoAspect()
+}
 
 async function openPhoto(item) {
   selectedPhoto.value = item
@@ -175,8 +194,17 @@ onBeforeUnmount(() => {
         {{ overlayDetection ? 'Распознано сейчас' : 'Ожидание распознавания' }}
       </span>
     </div>
-    <div class="live-wrap">
-      <video ref="liveVideoRef" class="live-video" controls autoplay muted playsinline />
+    <div class="live-frame" :style="liveFrameStyle">
+      <video
+        ref="liveVideoRef"
+        class="live-video"
+        controls
+        autoplay
+        muted
+        playsinline
+        @loadedmetadata="onVideoMetadata"
+        @resize="onVideoMetadata"
+      />
       <div v-if="overlayDetection" class="bbox-live" :style="liveOverlayStyle()">
         <span>{{ overlayDetection.plate_text }}</span>
       </div>
@@ -268,13 +296,19 @@ onBeforeUnmount(() => {
   <div v-if="selectedPhoto" class="modal" @click="selectedPhoto = ''">
     <div class="modal-photo-wrap" @click.stop>
       <button type="button" class="modal-close" @click="selectedPhoto = ''">Закрыть фото</button>
-      <img :src="`${API_BASE}${selectedPhoto.photo_url}`" :alt="`Фото распознавания ${selectedPhoto.plate_number}`" class="modal-img" />
-      <div
-        v-if="selectedPhoto.bbox_x1 !== null && selectedPhoto.frame_width > 0"
-        class="bbox-modal"
-        :style="overlayStyle(selectedPhoto)"
-      >
-        <span>{{ selectedPhoto.plate_number }}</span>
+      <div class="modal-photo-frame">
+        <img
+          :src="`${API_BASE}${selectedPhoto.photo_url}`"
+          :alt="`Фото распознавания ${selectedPhoto.plate_number}`"
+          class="modal-img"
+        />
+        <div
+          v-if="selectedPhoto.bbox_x1 !== null && selectedPhoto.frame_width > 0"
+          class="bbox-modal"
+          :style="overlayStyle(selectedPhoto)"
+        >
+          <span>{{ selectedPhoto.plate_number }}</span>
+        </div>
       </div>
     </div>
   </div>

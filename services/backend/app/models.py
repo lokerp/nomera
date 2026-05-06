@@ -101,7 +101,11 @@ class Camera(Base):
     stream_url: Mapped[str] = mapped_column(String(1024))
 
     parking_lot: Mapped[ParkingLot] = relationship(back_populates="cameras")
-    scan_logs: Mapped[list[ScanLog]] = relationship(back_populates="camera")
+    scan_logs: Mapped[list[ScanLog]] = relationship(
+        back_populates="camera",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class AllowedPlate(Base):

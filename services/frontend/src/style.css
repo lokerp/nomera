@@ -502,19 +502,41 @@ p {
   color: #166534;
 }
 
-.live-wrap {
+.live-wrap,
+.live-frame {
   position: relative;
   width: 100%;
+  margin: 0 auto;
   background: #020617;
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
+.live-frame {
+  aspect-ratio: 16 / 9;
+}
+
 .live-video {
   display: block;
   width: 100%;
-  max-height: 70vh;
+  height: 100%;
   background: #020617;
+  object-fit: contain;
+}
+
+.modal-photo-frame {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  max-width: 100%;
+}
+
+.modal-photo-frame .modal-img {
+  display: block;
+  max-width: min(95vw, 960px);
+  max-height: 80vh;
+  width: auto;
+  height: auto;
 }
 
 @media (max-width: 900px) {
