@@ -74,9 +74,11 @@ class DetectionService:
         self._cameras[config.camera_id] = state
         logger.info("Camera added: %s (%s) source=%s", config.camera_id, config.role.value, config.source)
 
-        # Auto-start if pipeline is running
+        # Pipeline must work 24/7: keep it running and attach new cameras automatically.
         if self._status == PipelineStatus.RUNNING:
             await self._start_camera(config.camera_id)
+        else:
+            await self.start()
 
         return config.camera_id
 
@@ -308,6 +310,15 @@ class DetectionService:
             filtered = zone_filter.apply(frame_dets)
             filtered = size_filter.apply(filtered)
 
+            if filtered:
+                logger.info(
+                    "Raw detections camera=%s frame=%d count=%d plates=%s",
+                    camera_id,
+                    frame_no,
+                    len(filtered),
+                    ", ".join(f"{item.plate_text}:{item.confidence:.2f}" for item in filtered),
+                )
+
             await self._sender.send_raw(
                 camera_id=camera_id,
                 camera_role=camera_role,
@@ -336,6 +347,14 @@ class DetectionService:
                 frame_height=frame_h,
                 snapshot_getter=make_snapshot,
             )
+            for event in events:
+                logger.info(
+                    "Confirmed plate camera=%s plate=%s conf=%.2f occurrences=%d",
+                    camera_id,
+                    event.plate_text,
+                    event.confidence,
+                    event.occurrences,
+                )
             all_events.extend(events)
 
         return all_events

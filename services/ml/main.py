@@ -63,7 +63,10 @@ async def lifespan(app: FastAPI):
     _state.detection_service = service
     _state.event_sender = sender
 
-    # 5. Auto-register default camera if configured
+    # 5. Keep pipeline always running (24/7), cameras can be added dynamically.
+    await service.start()
+
+    # 6. Auto-register default camera if configured
     default_source = settings.resolved_default_source
     if default_source:
         try:
