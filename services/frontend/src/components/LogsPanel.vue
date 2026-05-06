@@ -1,6 +1,6 @@
 <script setup>
 import Hls from 'hls.js'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { API_BASE } from '../api/client'
 
@@ -27,8 +27,9 @@ const overlayDetection = computed(() => {
   return latestConfirmedByCamera.value[liveCameraId.value] || null
 })
 
-function openPhoto(item) {
+async function openPhoto(item) {
   selectedPhoto.value = item
+  await nextTick()
 }
 
 function overlayStyle(item) {
@@ -127,7 +128,17 @@ watch(
     connectWs()
   }
 )
-onMounted(() => connectWs())
+watch(
+  () => liveCamera.value?.stream_url,
+  () => setupLivePlayer(),
+  { immediate: true }
+)
+
+onMounted(async () => {
+  connectWs()
+  await nextTick()
+  setupLivePlayer()
+})
 onBeforeUnmount(() => {
   clearTimeout(reconnectTimer)
   websocket?.close()
@@ -201,13 +212,6 @@ onBeforeUnmount(() => {
           <td>
             <div v-if="item.photo_url" class="thumb-wrap" @click="openPhoto(item)">
               <img :src="`${API_BASE}${item.photo_url}`" alt="scan" class="thumb" />
-              <div
-                v-if="item.bbox_x1 !== null && item.frame_width > 0"
-                class="bbox-thumb"
-                :style="overlayStyle(item)"
-              >
-                <span>{{ item.plate_number }}</span>
-              </div>
             </div>
             <span v-else class="muted">нет</span>
           </td>

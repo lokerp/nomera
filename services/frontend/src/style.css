@@ -243,6 +243,7 @@ p {
   height: 48px;
   object-fit: contain;
   background: #020617;
+  display: block;
   border-radius: 4px;
   cursor: pointer;
   border: 1px solid #e2e8f0;
@@ -288,6 +289,7 @@ p {
 .modal-img {
   max-width: min(95vw, 960px);
   max-height: 90vh;
+  display: block;
   border-radius: 10px;
 }
 
