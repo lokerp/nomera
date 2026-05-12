@@ -181,19 +181,33 @@ def infer_ml_camera_role(camera: Camera) -> str:
 
 
 async def sync_camera_to_ml(camera: Camera, *, strict: bool = False) -> None:
+    source_url = camera.stream_url
+
+    # Rewrite localhost backend URLs to the Docker-internal hostname
+    # so the ML container can reach the backend for uploaded videos.
+    ml_url_parsed = settings.ml_url  # e.g. "http://ml:8000"
+    if "://ml:" in ml_url_parsed or "://ml/" in ml_url_parsed:
+        # Running inside Docker — rewrite localhost references to backend service name
+        import re
+        source_url = re.sub(
+            r"https?://localhost(:\d+)?",
+            f"http://backend:{settings.port}",
+            source_url,
+        )
+
     payload = {
         "camera_id": camera.id,
-        "source": camera.stream_url,
+        "source": source_url,
         "role": infer_ml_camera_role(camera),
     }
     try:
         await request_ml("POST", "/api/v1/cameras", json=payload)
-        logger.info("Camera synced to ML: %s source=%s", camera.id, camera.stream_url)
+        logger.info("Camera synced to ML: %s source=%s", camera.id, source_url)
     except HTTPException:
         try:
             await request_ml("DELETE", f"/api/v1/cameras/{camera.id}")
             await request_ml("POST", "/api/v1/cameras", json=payload)
-            logger.info("Camera replaced in ML: %s source=%s", camera.id, camera.stream_url)
+            logger.info("Camera replaced in ML: %s source=%s", camera.id, source_url)
         except HTTPException:
             if strict:
                 raise

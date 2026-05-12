@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from app.api import _state
 from app.api.router import router
 from app.config import settings
-from app.infrastructure.detector.nomeroff_detector import NomeroffDetector
+from app.infrastructure.detector.factory import create_detector
 from app.infrastructure.sender.http_event_sender import HttpEventSender
 from app.application.services.detection_service import DetectionService
 
@@ -40,8 +40,8 @@ async def lifespan(app: FastAPI):
     logger.info("  Nomera ML Service starting...")
     logger.info("=" * 60)
 
-    # 1. Initialize detector (loads ML models)
-    detector = NomeroffDetector(force_ru_ocr=settings.force_ru_ocr)
+    # 1. Initialize detector via factory (loads ML models)
+    detector = create_detector(settings)
     detector.warmup()
 
     # 2. Initialize event sender

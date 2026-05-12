@@ -1,9 +1,9 @@
 """
-Download and verify official nomeroff-net models.
+Download and verify ALPR models for the configured engine.
 
-The nomeroff-net package downloads model configs and weights lazily when its
-pipeline is created. Keep this script intentionally small: it exercises that
-official path and avoids maintaining local hand-written model configs.
+Supports both nomeroff-net and fast-alpr engines.
+Uses the factory to create the correct detector and warms it up,
+which triggers the model download and caching.
 """
 from __future__ import annotations
 
@@ -13,14 +13,19 @@ import sys
 
 import cv2
 
-from app.infrastructure.detector.nomeroff_detector import NomeroffDetector
+from app.config import settings
+from app.infrastructure.detector.factory import create_detector
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Warm up nomeroff-net model cache")
+    parser = argparse.ArgumentParser(description="Warm up ALPR model cache")
     parser.add_argument(
         "--source",
         help="Optional video/image path for one-frame inference after warmup",
+    )
+    parser.add_argument(
+        "--engine",
+        help="Override ML_ALPR_ENGINE for this run (e.g. 'fast-alpr', 'nomeroff')",
     )
     args = parser.parse_args()
 
@@ -29,7 +34,11 @@ def main() -> int:
         format="%(asctime)s | %(levelname)-7s | %(name)s | %(message)s",
     )
 
-    detector = NomeroffDetector()
+    # Allow CLI override of engine
+    if args.engine:
+        settings.alpr_engine = args.engine
+
+    detector = create_detector(settings)
     detector.warmup()
 
     if args.source:
@@ -51,7 +60,8 @@ def main() -> int:
             )
         return 0
 
-    print("Warmup ok. Official nomeroff-net models are cached.")
+    engine = settings.alpr_engine
+    print(f"Warmup ok. Models for engine '{engine}' are cached.")
     return 0
 
 

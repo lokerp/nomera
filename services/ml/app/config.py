@@ -22,10 +22,18 @@ class Settings(BaseSettings):
     backend_url: str = "http://localhost:8001"
     backend_api_key: str = ""
 
+    # --- ALPR engine selection ---
+    alpr_engine: str = "fast-alpr"  # "fast-alpr" or "nomeroff"
+
+    # --- fast-alpr settings ---
+    fastalpr_detector_model: str = "yolo-v9-t-384-license-plate-end2end"
+    fastalpr_detector_conf: float = 0.4
+    fastalpr_ocr_model: str = "cct-s-v1-global-model"
+
     # --- Video processing ---
     frame_skip: int = 5          # process every Nth frame
     batch_size: int = 4          # frames per detector call
-    force_ru_ocr: bool = False   # force ru OCR and disable region classification
+    force_ru_ocr: bool = False   # force ru OCR and disable region classification (nomeroff only)
 
     # --- Filtering ---
     min_bbox_area_pct: float = 0.10  # minimum bbox area as % of frame area
