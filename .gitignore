@@ -20,13 +20,9 @@ logs/
 example_video.mp4
 services/ml/example_video.mp4
 
-nomeroff-net/
-services/ml/nomeroff-net/
-
 *.pt
 *.ckpt
 *.pth
 data/
-models/
 
 training/

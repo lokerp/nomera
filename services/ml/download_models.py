@@ -1,9 +1,8 @@
 """
-Download and verify ALPR models for the configured engine.
+Download and verify ALPR models.
 
-Supports both nomeroff-net and fast-alpr engines.
-Uses the factory to create the correct detector and warms it up,
-which triggers the model download and caching.
+Uses the factory to create the detector and warms it up,
+which triggers model download and caching.
 """
 from __future__ import annotations
 
@@ -23,20 +22,12 @@ def main() -> int:
         "--source",
         help="Optional video/image path for one-frame inference after warmup",
     )
-    parser.add_argument(
-        "--engine",
-        help="Override ML_ALPR_ENGINE for this run (e.g. 'fast-alpr', 'nomeroff')",
-    )
     args = parser.parse_args()
 
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s | %(levelname)-7s | %(name)s | %(message)s",
     )
-
-    # Allow CLI override of engine
-    if args.engine:
-        settings.alpr_engine = args.engine
 
     detector = create_detector(settings)
     detector.warmup()
@@ -60,8 +51,7 @@ def main() -> int:
             )
         return 0
 
-    engine = settings.alpr_engine
-    print(f"Warmup ok. Models for engine '{engine}' are cached.")
+    print("Warmup ok. Models are cached.")
     return 0
 
 

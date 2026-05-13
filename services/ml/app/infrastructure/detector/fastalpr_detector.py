@@ -29,12 +29,14 @@ class FastAlprDetector(IPlateDetector):
     def __init__(
         self,
         detector_model: str = "yolo-v9-t-640-license-plate-end2end",
+        detector_model_path: str = "",
         detector_conf: float = 0.4,
         ocr_model: str = "",
         ocr_model_path: str = "",
         ocr_config_path: str = "",
     ) -> None:
         self._detector_model = detector_model
+        self._detector_model_path = detector_model_path
         self._detector_conf = detector_conf
         self._ocr_model = ocr_model
         self._ocr_model_path = ocr_model_path
@@ -48,6 +50,34 @@ class FastAlprDetector(IPlateDetector):
 
         from app.config import SERVICE_ROOT
         from fast_alpr import ALPR
+
+        _providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+
+        # Resolve and build local detector if a path is provided
+        detector_instance = None
+        if self._detector_model_path:
+            from fast_alpr.base import BaseDetector as _BaseDetector
+            from open_image_models.detection.core.yolo_v9.inference import YoloV9ObjectDetector
+
+            det_path = Path(self._detector_model_path)
+            if not det_path.is_absolute():
+                det_path = SERVICE_ROOT / det_path
+
+            logger.info("Loading local detector model: %s", det_path)
+
+            class _LocalDetector(_BaseDetector):
+                def __init__(self, path: Path, conf: float, providers: list) -> None:
+                    self._det = YoloV9ObjectDetector(
+                        model_path=str(path),
+                        conf_thresh=conf,
+                        class_labels=["License Plate"],
+                        providers=providers,
+                    )
+
+                def predict(self, frame: np.ndarray):
+                    return self._det.predict(frame)
+
+            detector_instance = _LocalDetector(det_path, self._detector_conf, _providers)
 
         # Resolve custom OCR model paths relative to SERVICE_ROOT
         ocr_kwargs: dict = {}
@@ -63,7 +93,7 @@ class FastAlprDetector(IPlateDetector):
             logger.info("Loading fast-alpr pipeline (custom OCR)...")
             logger.info(
                 "  detector=%s  conf=%.2f  ocr_model=%s  ocr_config=%s",
-                self._detector_model,
+                self._detector_model_path or self._detector_model,
                 self._detector_conf,
                 model_path,
                 config_path,
@@ -74,23 +104,28 @@ class FastAlprDetector(IPlateDetector):
             if config_path:
                 ocr_kwargs["ocr_config_path"] = str(config_path)
         else:
-            logger.info("Loading fast-alpr pipeline (hub model)...")
+            logger.info("Loading fast-alpr pipeline (hub OCR model)...")
             logger.info(
                 "  detector=%s  conf=%.2f  ocr=%s",
-                self._detector_model,
+                self._detector_model_path or self._detector_model,
                 self._detector_conf,
                 self._ocr_model,
             )
             ocr_kwargs["ocr_model"] = self._ocr_model or None
 
-        self._alpr = ALPR(
-            detector_model=self._detector_model,
+        alpr_kwargs: dict = dict(
             detector_conf_thresh=self._detector_conf,
-            detector_providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
+            detector_providers=_providers,
             ocr_device="cuda",
-            ocr_providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
+            ocr_providers=_providers,
             **ocr_kwargs,
         )
+        if detector_instance is not None:
+            alpr_kwargs["detector"] = detector_instance
+        else:
+            alpr_kwargs["detector_model"] = self._detector_model
+
+        self._alpr = ALPR(**alpr_kwargs)
 
         # Warm up with a tiny dummy frame so ONNX sessions are fully initialized.
         dummy = np.zeros((64, 128, 3), dtype=np.uint8)

@@ -28,9 +28,6 @@ RUN echo "/opt/conda/lib/python3.11/site-packages/nvidia/cublas/lib" > /etc/ld.s
 # Application code
 COPY . .
 
-# Pre-download models at build time (optional, speeds up cold start)
-# RUN python -c "from nomeroff_net import pipeline; pipeline('number_plate_detection_and_reading')"
-
 EXPOSE 8000
 
 HEALTHCHECK --start-period=300s --interval=30s --timeout=5s --retries=3 \

@@ -16,13 +16,9 @@ services:
       - ML_DEFAULT_SOURCE=/data/example_video.mp4
       - ML_DEFAULT_CAMERA_ROLE=entry
       - ML_AUTO_START=false
-      - ML_FORCE_RU_OCR=true
-      - LOCAL_STORAGE=/opt/nomeroff-data
     volumes:
       - ./services/ml/example_video.mp4:/data/example_video.mp4:ro
-      - ./services/ml/venv/Lib/site-packages/data:/opt/nomeroff-data:ro
       - ml_model_cache:/root/.cache
-      - ml_paddle_cache:/root/.paddlex
     deploy:
       resources:
         reservations:
@@ -76,4 +72,3 @@ networks:
 
 volumes:
   ml_model_cache:
-  ml_paddle_cache:

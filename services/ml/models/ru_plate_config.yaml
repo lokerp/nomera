@@ -1,0 +1,32 @@
+# Plate config for Russian license plates (ГОСТ Р 50577)
+#
+# Russian plates use a subset of Cyrillic letters that look identical
+# to Latin: А В Е К М Н О Р С Т У Х → A B E K M H O P C T Y X
+# The dataset labels are already in Latin equivalents.
+#
+# Standard Russian plate format:
+#   A 000 AA 00   (8 chars, 2-digit region)
+#   A 000 AA 000  (9 chars, 3-digit region)
+
+# Maximum plate text length (Russian plates are 8 or 9 chars)
+max_plate_slots: 9
+
+# Full character set: digits + Latin equivalents of allowed Cyrillic + pad char
+# Sorted: 0-9, A, B, C, E, H, K, M, O, P, T, X, Y, _
+alphabet: '0123456789ABCEHKMOPTXY_'
+
+# Padding character for plates shorter than max_plate_slots
+pad_char: '_'
+
+# Input image dimensions
+img_height: 64
+img_width: 128
+
+# Do not preserve aspect ratio — resize directly to target dims
+keep_aspect_ratio: false
+
+# Resize interpolation
+interpolation: linear
+
+# Color mode
+image_color_mode: rgb

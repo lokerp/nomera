@@ -22,27 +22,17 @@ class Settings(BaseSettings):
     backend_url: str = "http://localhost:8001"
     backend_api_key: str = ""
 
-    # --- ALPR engine selection ---
-    alpr_engine: str = "fast-alpr"  # "fast-alpr", "nomeroff", or "custom"
-
     # --- fast-alpr settings ---
     fastalpr_detector_model: str = "yolo-v9-s-608-license-plate-end2end"
+    fastalpr_detector_model_path: str = ""  # local ONNX detector path (overrides hub model when set)
     fastalpr_detector_conf: float = 0.4
     fastalpr_ocr_model: str = ""  # hub model name (leave empty when using custom paths)
     fastalpr_ocr_model_path: str = "models/ru_ocr.onnx"  # custom ONNX model
     fastalpr_ocr_config_path: str = "models/ru_plate_config.yaml"  # custom plate config
 
-    # --- custom engine settings (open-image-models + PaddleOCR) ---
-    custom_detector_model: str = "yolo-v9-s-608-license-plate-end2end"
-    custom_detector_conf: float = 0.4
-    custom_ocr_lang: str = "en"       # PaddleOCR language
-    custom_bbox_pad: float = 0.10     # bbox expansion factor
-    custom_use_gpu: bool = True       # use GPU for PaddleOCR (requires paddlepaddle-gpu)
-
     # --- Video processing ---
     frame_skip: int = 5          # process every Nth frame
     batch_size: int = 4          # frames per detector call
-    force_ru_ocr: bool = False   # force ru OCR and disable region classification (nomeroff only)
 
     # --- Filtering ---
     min_bbox_area_pct: float = 0.10  # minimum bbox area as % of frame area
