@@ -29,6 +29,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger("nomera-ml")
 
+_LOG_FMT = logging.Formatter(
+    "%(asctime)s │ %(levelname)-7s │ %(name)s │ %(message)s",
+    datefmt="%H:%M:%S",
+)
+
+
+def _ensure_app_logging() -> None:
+    """
+    Uvicorn calls logging.config.dictConfig() on startup which clears the root
+    logger's handlers installed by basicConfig().  Re-attach a StreamHandler
+    directly on the 'app' logger so detection/service logs always reach stdout.
+    """
+    app_log = logging.getLogger("app")
+    if not app_log.handlers:
+        h = logging.StreamHandler(sys.stdout)
+        h.setFormatter(_LOG_FMT)
+        app_log.addHandler(h)
+    app_log.setLevel(logging.DEBUG)
+    app_log.propagate = False
+
 
 # ─── Application lifespan ────────────────────────────────────────────────────
 
@@ -36,6 +56,7 @@ logger = logging.getLogger("nomera-ml")
 async def lifespan(app: FastAPI):
     """Startup and shutdown logic."""
     # --- Startup ---
+    _ensure_app_logging()
     logger.info("=" * 60)
     logger.info("  Nomera ML Service starting...")
     logger.info("=" * 60)

@@ -7,6 +7,7 @@ pydantic-settings
 httpx
 python-dotenv
 # fast-alpr engine dependencies
+fast-alpr>=0.3.0
 fast-plate-ocr>=1.1.0
 open-image-models>=0.5.1
-onnxruntime>=1.19.2
+onnxruntime-gpu>=1.19.2

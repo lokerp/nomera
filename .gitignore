@@ -28,3 +28,5 @@ services/ml/nomeroff-net/
 *.pth
 data/
 models/
+
+training/

@@ -195,6 +195,7 @@ class DetectionService:
         batch_frames: list[np.ndarray] = []
         batch_meta: list[tuple[int, float]] = []  # (frame_no, timestamp)
         last_frame_cache: dict[int, np.ndarray] = {}  # small cache for snapshots
+        _log_every = 200  # log a heartbeat every N frames processed
 
         try:
             for frame_no, timestamp, frame in source.frames():
@@ -225,6 +226,14 @@ class DetectionService:
                         frame_h,
                     )
                     state.frames_processed += len(batch_frames)
+
+                    if state.frames_processed % _log_every < self._settings.batch_size:
+                        logger.info(
+                            "Camera %s heartbeat: %d frames processed, %d total detections",
+                            camera_id,
+                            state.frames_processed,
+                            state.detections_count,
+                        )
 
                     # Send events to backend
                     for event in events:

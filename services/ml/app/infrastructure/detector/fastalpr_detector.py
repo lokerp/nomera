@@ -28,13 +28,17 @@ class FastAlprDetector(IPlateDetector):
 
     def __init__(
         self,
-        detector_model: str = "yolo-v9-t-384-license-plate-end2end",
+        detector_model: str = "yolo-v9-t-640-license-plate-end2end",
         detector_conf: float = 0.4,
-        ocr_model: str = "cct-s-v2-global-model",
+        ocr_model: str = "",
+        ocr_model_path: str = "",
+        ocr_config_path: str = "",
     ) -> None:
         self._detector_model = detector_model
         self._detector_conf = detector_conf
         self._ocr_model = ocr_model
+        self._ocr_model_path = ocr_model_path
+        self._ocr_config_path = ocr_config_path
         self._alpr = None
 
     def warmup(self) -> None:
@@ -42,20 +46,50 @@ class FastAlprDetector(IPlateDetector):
         if self._alpr is not None:
             return
 
-        logger.info("Loading fast-alpr pipeline...")
-        logger.info(
-            "  detector=%s  conf=%.2f  ocr=%s",
-            self._detector_model,
-            self._detector_conf,
-            self._ocr_model,
-        )
-
+        from app.config import SERVICE_ROOT
         from fast_alpr import ALPR
+
+        # Resolve custom OCR model paths relative to SERVICE_ROOT
+        ocr_kwargs: dict = {}
+        if self._ocr_model_path:
+            model_path = Path(self._ocr_model_path)
+            if not model_path.is_absolute():
+                model_path = SERVICE_ROOT / model_path
+
+            config_path = Path(self._ocr_config_path) if self._ocr_config_path else None
+            if config_path and not config_path.is_absolute():
+                config_path = SERVICE_ROOT / config_path
+
+            logger.info("Loading fast-alpr pipeline (custom OCR)...")
+            logger.info(
+                "  detector=%s  conf=%.2f  ocr_model=%s  ocr_config=%s",
+                self._detector_model,
+                self._detector_conf,
+                model_path,
+                config_path,
+            )
+
+            ocr_kwargs["ocr_model"] = None
+            ocr_kwargs["ocr_model_path"] = str(model_path)
+            if config_path:
+                ocr_kwargs["ocr_config_path"] = str(config_path)
+        else:
+            logger.info("Loading fast-alpr pipeline (hub model)...")
+            logger.info(
+                "  detector=%s  conf=%.2f  ocr=%s",
+                self._detector_model,
+                self._detector_conf,
+                self._ocr_model,
+            )
+            ocr_kwargs["ocr_model"] = self._ocr_model or None
 
         self._alpr = ALPR(
             detector_model=self._detector_model,
             detector_conf_thresh=self._detector_conf,
-            ocr_model=self._ocr_model,
+            detector_providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
+            ocr_device="cuda",
+            ocr_providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
+            **ocr_kwargs,
         )
 
         # Warm up with a tiny dummy frame so ONNX sessions are fully initialized.
