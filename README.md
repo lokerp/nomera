@@ -1,143 +1,153 @@
-# Nomera Demo (ML + Backend + Frontend)
+# УмныеВрата
 
-Легкий демо-контур для распознавания номеров:
-- `ml` (FastAPI + fast-alpr) читает видео, детектит номера и отправляет raw/confirmed события.
-- `backend` (FastAPI) принимает события от ML, хранит их в памяти и транслирует во frontend по WebSocket.
-- `frontend` (Vue + Vite) показывает видео, bbox overlay и лог подтвержденных номеров.
+Система автоматического распознавания номерных знаков и управления доступом на охраняемых объектах (КПП, парковки, жилые комплексы, предприятия).
 
-## Архитектура и порты
-- Frontend: `http://localhost:3000`
-- Backend API: `http://localhost:8001`
-- ML API: `http://localhost:8000`
+Система идентифицирует транспортные средства по видеопотоку в реальном времени, сверяет номера с белым списком, инициирует открытие шлагбаума/ворот и предоставляет операторам веб-интерфейс для управления.
 
-Поток данных:
-1. Нажимаем `Start ML` во frontend.
-2. Frontend дергает backend `POST /api/v1/ml/start`.
-3. Backend проксирует команду в ML.
-4. ML начинает обработку `services/ml/example_video.mp4`, шлет raw и confirmed в backend.
-5. Backend рассылает события во frontend через `ws://localhost:8001/api/v1/ws`.
+## Архитектура
 
-## Быстрый запуск через Docker Compose
-
-### 1) Подготовка
-В корне проекта должен быть файл `.env` (уже есть в репо). Пример:
-
-```env
-ML_API_KEY=dev-secret-key-change-in-production
-BACKEND_API_KEY=dev-backend-key-change-in-production
+```
+Камеры (RTSP / файл)
+        │
+        ▼
+┌──────────────┐   HTTP события   ┌───────────────────┐   REST + WebSocket
+│  ML-сервис   │ ───────────────► │  Backend-сервис   │ ◄────────────────── Браузер
+│  порт 8000   │ ◄─────────────── │  порт 8001        │
+└──────────────┘  управление      └───────────────────┘
 ```
 
-Проверьте, что файл видео существует:
-- `services/ml/example_video.mp4`
+| Сервис   | Директория           | Порт | Описание                                        |
+|----------|----------------------|------|-------------------------------------------------|
+| ML       | `services/ml/`       | 8000 | Детекция и распознавание номерных знаков (YOLOv8-Pose + ONNX OCR) |
+| Backend  | `services/backend/`  | 8001 | REST API, бизнес-логика, БД, WebSocket-хаб      |
+| Frontend | `services/frontend/` | 3000 | Веб-панель для операторов и администраторов     |
 
-### 2) Поднять стек
-Из корня проекта:
+## Быстрый запуск (Docker Compose)
 
 ```powershell
+# 1. Клонировать репозиторий
+git clone <repo-url>
+cd nomera
+
+# 2. Убедиться, что файлы моделей на месте (см. раздел "Модели" ниже)
+
+# 3. Поднять все сервисы
 docker compose up --build -d
+
+# 4. Проверить статус
 docker compose ps
+
+# 5. Открыть веб-панель
+#    http://localhost:3000
+#    Логин: admin  |  Пароль: admin123
 ```
 
-### 3) Открыть UI и запустить pipeline
-1. Откройте `http://localhost:3000`
-2. Нажмите `Start ML`
-3. Должны появиться bbox на видео и записи в логе справа.
-
-### 4) Проверка health
+Проверка здоровья сервисов:
 
 ```powershell
 Invoke-RestMethod http://localhost:8000/api/v1/health
 Invoke-RestMethod http://localhost:8001/api/v1/health
 ```
 
-## Полезные команды
+## Локальный запуск без Docker
 
-Логи:
-
-```powershell
-docker compose logs -f ml
-docker compose logs -f backend
-docker compose logs -f frontend
-```
-
-Остановка:
-
-```powershell
-docker compose down
-```
-
-Пересборка конкретного сервиса:
-
-```powershell
-docker compose up --build -d ml
-docker compose up --build -d backend
-docker compose up --build -d frontend
-```
-
-## Мини smoke-check backend API
-
-Статус ML через backend:
-
-```powershell
-Invoke-RestMethod http://localhost:8001/api/v1/ml/status
-```
-
-Запуск/остановка ML через backend:
-
-```powershell
-Invoke-RestMethod -Method Post http://localhost:8001/api/v1/ml/start
-Invoke-RestMethod -Method Post http://localhost:8001/api/v1/ml/stop
-```
-
-Список confirmed детекций:
-
-```powershell
-Invoke-RestMethod "http://localhost:8001/api/v1/detections?limit=20"
-```
-
-## Локальный запуск по сервисам (без Docker)
-
-Ниже вариант для Windows PowerShell.
-
-### 1) ML service
-
+**ML-сервис:**
 ```powershell
 cd services/ml
+python -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-Copy-Item .env.example .env -Force
 python main.py
 ```
 
-### 2) Backend service (в новом терминале)
-
+**Backend-сервис** (новый терминал):
 ```powershell
 cd services/backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+python -m venv venv
+.\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-Copy-Item .env.example .env -Force
 python main.py
 ```
 
-### 3) Frontend service (в новом терминале)
-
+**Frontend-сервис** (новый терминал):
 ```powershell
 cd services/frontend
 npm install
 npm run dev -- --host 0.0.0.0 --port 3000
 ```
 
-После этого откройте `http://localhost:3000`.
+## Конфигурация
 
-## Что важно знать
-- `ML_AUTO_START=false`: камера регистрируется на старте ML, но pipeline не запускается автоматически.
-- Синхронизация bbox и видео идет по `timestamp_seconds` из raw событий.
-- Backend хранит историю только в памяти (после рестарта очищается).
-- Модели (`services/ml/models/`) не хранятся в git — нужно подложить вручную перед запуском.
+Корневой `.env` (уже есть в репозитории для разработки):
 
-## Если что-то не стартует
-- Порт занят: освободите `3000`, `8000`, `8001` или поменяйте mapping в `docker-compose.yml`.
-- Нет GPU/драйверов для CUDA: ML контейнер может не подняться. Для локального CPU-режима обычно проще запускать ML сервис без Docker и отдельно адаптировать зависимости под CPU.
-- Нет bbox в UI: проверьте, что нажат `Start ML`, открыт WS (`/api/v1/ws`) и в логах backend приходят `raw_detection`.
-- ML циклически рестартится на старте: обычно это значит, что не найден/пустой кэш `services/ml/venv/Lib/site-packages/data` и контейнер не может достучаться до `models.vsp.net.ua`. Либо подключите VPN и прогрейте модели, либо проверьте монтирование кэша.
+```env
+ML_API_KEY=dev-secret-key-change-in-production
+BACKEND_API_KEY=dev-backend-key-change-in-production
+```
+
+Ключевые переменные окружения:
+
+| Переменная | Сервис | Описание |
+|---|---|---|
+| `ML_DETECTOR_ENGINE` | ML | `keypoint` (по умолчанию) или `fast-alpr` |
+| `ML_FRAME_SKIP` | ML | Обрабатывать каждый N-й кадр (по умолчанию: 5) |
+| `ML_AUTO_START` | ML | Автозапуск пайплайна при старте (по умолчанию: false) |
+| `DATABASE_URL` | Backend | SQLite по умолчанию; для прода — PostgreSQL |
+| `JWT_SECRET` | Backend | Сменить перед деплоем в продакшн |
+
+Полное описание всех переменных — в [TECH.md](TECH.md).
+
+## Использование
+
+1. Открыть `http://localhost:3000` и войти под учётной записью администратора.
+2. В табе **«Камеры»** добавить камеру (RTSP-URL или тестовый видеофайл) и нажать **«Запустить распознавание»**.
+3. В табе **«Номера»** настроить белый список — добавить номера с разрешёнными днями и временным окном.
+4. Новые детекции появляются в табе **«Журнал»** в реальном времени.
+5. Заявки от водителей (через мобильное приложение) отображаются в разделе **«Заявки»** — одобрить или отклонить.
+
+Подробное руководство для операторов — в [USER_FLOW.md](USER_FLOW.md).
+
+## Полезные команды
+
+```powershell
+# Логи сервисов
+docker compose logs -f ml
+docker compose logs -f backend
+docker compose logs -f frontend
+
+# Пересборка отдельного сервиса
+docker compose up --build -d ml
+
+# Остановка
+docker compose down
+
+# Запуск/остановка ML-пайплайна через API
+Invoke-RestMethod -Method Post http://localhost:8001/api/v1/ml/start
+Invoke-RestMethod -Method Post http://localhost:8001/api/v1/ml/stop
+
+# Последние подтверждённые детекции
+Invoke-RestMethod "http://localhost:8001/api/v1/detections?limit=20"
+```
+
+## Чеклист для продакшн-деплоя
+
+- [ ] Сменить `ML_API_KEY`, `BACKEND_API_KEY`, `JWT_SECRET` на случайные строки
+- [ ] Изменить пароль администратора по умолчанию
+- [ ] Настроить HTTPS-прокси (nginx / Caddy)
+- [ ] Переключить БД на PostgreSQL
+- [ ] Настроить постоянный volume для снимков (`static/logs/`)
+- [ ] Включить GPU в Docker-конфигурации ML
+
+## Документация
+
+- [TECH.md](TECH.md) — архитектура, стек, инструкция по развёртыванию, реестр фич
+- [USER_FLOW.md](USER_FLOW.md) — руководство пользователя (администратор, охранник)
+
+## Решение проблем
+
+| Проблема | Причина | Решение |
+|---|---|---|
+| ML-контейнер не поднимается | Нет GPU / CUDA-драйверов | Запустить ML без Docker с `onnxruntime-cpu` |
+| Нет детекций в интерфейсе | Пайплайн не запущен | Нажать «Запустить распознавание» в табе «Камеры» |
+| Порт занят | Конфликт с другим процессом | Изменить маппинг в `docker-compose.yml` |
+| Ошибка «модель не найдена» | Отсутствуют файлы моделей | Разместить файлы моделей согласно разделу выше |
