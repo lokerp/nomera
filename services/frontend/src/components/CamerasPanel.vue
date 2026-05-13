@@ -190,9 +190,6 @@ function toggleCameraForm() {
       <button v-if="isAdmin" type="button" @click="toggleParkingForm">
         {{ showParkingForm ? 'Скрыть форму парковки' : (editParkingId ? 'Редактировать парковку' : 'Новая парковка') }}
       </button>
-      <button v-if="isAdmin && selectedParkingLotId" type="button" class="primary" @click="toggleCameraForm">
-        {{ showCameraForm ? 'Скрыть форму камеры' : (editCameraId ? 'Редактировать камеру' : 'Добавить камеру') }}
-      </button>
     </div>
   </header>
 
@@ -225,6 +222,9 @@ function toggleCameraForm() {
 
     <div v-if="isAdmin && selectedParking" class="surface-foot">
       <button type="button" @click="startEditParking(selectedParking)">Изменить парковку</button>
+      <button type="button" class="primary" @click="toggleCameraForm">
+        {{ showCameraForm ? 'Скрыть форму камеры' : (editCameraId ? 'Редактировать камеру' : 'Добавить камеру') }}
+      </button>
       <button type="button" class="danger" @click="emit('delete-parking', selectedParking.id)">Удалить парковку</button>
     </div>
   </section>

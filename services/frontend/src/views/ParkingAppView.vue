@@ -42,9 +42,6 @@ const activeTabHint = computed(
       users: 'Учетные записи и доступы'
     })[activeTab.value]
 )
-const selectedParkingName = computed(
-  () => parkingLots.value.find((item) => item.id === selectedParkingLotId.value)?.name || 'Парковка не выбрана'
-)
 const tabLabels = {
   cameras: 'Парковки',
   plates: 'Допуски и заявки',
@@ -338,10 +335,6 @@ function logout() {
   router.push({ name: 'login' })
 }
 
-async function manualRefresh() {
-  await refreshActiveTab()
-}
-
 function handleConfirmedDetection(payload) {
   const currentParking = selectedParkingLotId.value
   if (activeTab.value !== 'logs' || !currentParking) return
@@ -400,7 +393,6 @@ onBeforeUnmount(() => {
           <p>{{ state.user?.username }}</p>
           <span>{{ roleLabel }}</span>
         </div>
-        <button type="button" @click="manualRefresh">Обновить</button>
         <button type="button" class="danger" @click="logout">Выйти</button>
       </div>
     </header>
@@ -427,9 +419,18 @@ onBeforeUnmount(() => {
 
     <section class="ops-main">
       <div class="ops-status-row">
-        <div class="ops-chip">
-          <span>Текущая парковка</span>
-          <strong>{{ selectedParkingName }}</strong>
+        <div class="ops-parking-picker">
+          <span class="ops-parking-label">Текущая парковка</span>
+          <select
+            v-if="parkingLots.length"
+            class="ops-parking-select"
+            :value="selectedParkingLotId"
+            aria-label="Текущая парковка"
+            @change="selectedParkingLotId = $event.target.value"
+          >
+            <option v-for="item in parkingLots" :key="item.id" :value="item.id">{{ item.name }}</option>
+          </select>
+          <strong v-else class="ops-parking-empty">Парковок пока нет</strong>
         </div>
         <p v-if="loading" class="muted" aria-live="polite">Синхронизация данных...</p>
       </div>

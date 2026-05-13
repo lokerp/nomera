@@ -15,7 +15,6 @@ const emit = defineEmits(['change-camera-filter', 'confirmed-detection'])
 
 const selectedPhoto = ref('')
 const liveVideoRef = ref(null)
-const liveCameraId = ref('')
 const latestConfirmedByCamera = ref({})
 const liveError = ref('')
 const liveAspectRatio = ref(16 / 9)
@@ -23,10 +22,14 @@ let websocket = null
 let reconnectTimer = null
 let hls = null
 
-const liveCamera = computed(() => props.cameras.find((camera) => camera.id === liveCameraId.value) || null)
-const overlayDetection = computed(() => latestConfirmedByCamera.value[liveCameraId.value] || null)
+const activeCameraId = computed({
+  get: () => props.selectedCameraId,
+  set: (value) => emit('change-camera-filter', value)
+})
+const liveCamera = computed(() => props.cameras.find((camera) => camera.id === activeCameraId.value) || null)
+const overlayDetection = computed(() => latestConfirmedByCamera.value[activeCameraId.value] || null)
 const liveStreamHint = computed(() => {
-  if (!liveCamera.value) return 'Выберите камеру в селекторе ниже.'
+  if (!liveCamera.value) return 'Выберите камеру в селекторе выше.'
   return `Источник: ${liveCamera.value.stream_url}`
 })
 const liveFrameStyle = computed(() => {
@@ -136,12 +139,16 @@ function setupLivePlayer() {
 watch(
   () => props.cameras,
   (value) => {
-    if (!liveCameraId.value && value.length) liveCameraId.value = value[0].id
+    if (!value.length) {
+      if (activeCameraId.value) activeCameraId.value = ''
+      return
+    }
+    const stillExists = value.some((camera) => camera.id === activeCameraId.value)
+    if (!stillExists) activeCameraId.value = value[0].id
   },
   { immediate: true }
 )
 
-watch(liveCameraId, () => setupLivePlayer())
 watch(
   () => props.token,
   () => {
@@ -172,18 +179,29 @@ onBeforeUnmount(() => {
     <div class="ws-heading">
       <p class="ws-eyebrow">Рабочая зона</p>
       <h2>История и аналитика</h2>
-      <p class="ws-sub">Прямой эфир камеры, ключевые показатели и журнал распознаваний за выбранную парковку.</p>
+      <p class="ws-sub">Сначала выберите камеру — прямой эфир, аналитика и журнал относятся к ней.</p>
     </div>
     <div class="ws-actions">
       <label class="inline-field">
-        Камера в эфире
-        <select v-model="liveCameraId">
+        Камера
+        <select v-model="activeCameraId">
+          <option value="" disabled>Выберите камеру</option>
           <option v-for="camera in cameras" :key="camera.id" :value="camera.id">{{ camera.name }}</option>
         </select>
       </label>
     </div>
   </header>
 
+  <div v-if="!cameras.length" class="empty-state">
+    <p><strong>Камер пока нет.</strong></p>
+    <p class="muted">Добавьте камеру на вкладке «Парковки», чтобы увидеть эфир и журнал.</p>
+  </div>
+  <div v-else-if="!activeCameraId" class="empty-state">
+    <p><strong>Камера не выбрана.</strong></p>
+    <p class="muted">Выберите камеру в селекторе выше, чтобы увидеть прямой эфир и события.</p>
+  </div>
+
+  <template v-else>
   <section class="surface surface--media">
     <div class="surface-head">
       <div>
@@ -242,15 +260,8 @@ onBeforeUnmount(() => {
     <div class="surface-head">
       <div>
         <h3>Журнал распознаваний</h3>
-        <p class="muted">Последние подтвержденные события на выбранной парковке.</p>
+        <p class="muted">Последние подтвержденные события на выбранной камере.</p>
       </div>
-      <label class="inline-field inline-field--end">
-        Фильтр по камере
-        <select :value="selectedCameraId" @change="emit('change-camera-filter', $event.target.value)">
-          <option value="">Все камеры</option>
-          <option v-for="camera in cameras" :key="camera.id" :value="camera.id">{{ camera.name }}</option>
-        </select>
-      </label>
     </div>
     <div class="data-region">
       <table class="table table--dense">
@@ -292,6 +303,7 @@ onBeforeUnmount(() => {
       </table>
     </div>
   </section>
+  </template>
 
   <div v-if="selectedPhoto" class="modal" @click="selectedPhoto = ''">
     <div class="modal-photo-wrap" @click.stop>

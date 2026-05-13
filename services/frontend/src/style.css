@@ -811,6 +811,48 @@ body {
   color: #0f4e83;
 }
 
+.ops-parking-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #b9d7f7;
+  background: #e7f1ff;
+  border-radius: 12px;
+  padding: 8px 12px;
+  box-shadow: 0 2px 10px rgba(15, 78, 131, 0.08);
+}
+
+.ops-parking-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #2b5d8d;
+}
+
+.ops-parking-select {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f4e83;
+  background: #ffffff;
+  border: 1px solid #b9d7f7;
+  border-radius: 8px;
+  padding: 6px 10px;
+  min-width: 180px;
+  cursor: pointer;
+}
+
+.ops-parking-select:focus {
+  outline: none;
+  border-color: #0f4e83;
+  box-shadow: 0 0 0 3px rgba(15, 78, 131, 0.18);
+}
+
+.ops-parking-empty {
+  font-size: 13px;
+  color: #8a5b3a;
+}
+
 .ops-error {
   border: 1px solid #f5b6b6;
   background: #fff3f3;

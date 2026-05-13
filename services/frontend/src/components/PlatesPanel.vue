@@ -152,7 +152,7 @@ function toggleRequestForm() {
     </div>
     <div class="ws-actions">
       <button type="button" @click="toggleRequestForm">
-        {{ showRequestForm ? 'Скрыть форму заявки' : (requestForm.id ? 'Редактировать заявку' : 'Тестовая заявка') }}
+        {{ showRequestForm ? 'Скрыть форму заявки' : (requestForm.id ? 'Редактировать заявку' : 'Тестовая заявка от водителя') }}
       </button>
       <button type="button" class="primary" @click="togglePlateForm">
         {{ showPlateForm ? 'Скрыть форму допуска' : (editAllowedPlateId ? 'Редактировать допуск' : 'Добавить допуск') }}
@@ -164,7 +164,7 @@ function toggleRequestForm() {
     <div class="surface-head">
       <div>
         <h3>Заявки на одобрение</h3>
-        <p class="muted">Принимаются от охранников и проверяются администратором.</p>
+        <p class="muted">Поступают от водителей. Охранник проверяет и принимает или отклоняет их.</p>
       </div>
       <span class="counter-pill" :class="{ 'counter-pill--alert': pendingCount > 0 }">{{ pendingCount }}</span>
     </div>
@@ -184,7 +184,7 @@ function toggleRequestForm() {
     </div>
     <div v-else class="empty-state">
       <p><strong>Очередь чистая.</strong></p>
-      <p class="muted">Новые заявки от охранников появятся здесь автоматически.</p>
+      <p class="muted">Новые заявки от водителей появятся здесь автоматически.</p>
     </div>
   </section>
 
@@ -284,8 +284,8 @@ function toggleRequestForm() {
   <section v-if="showRequestForm" class="surface surface--form">
     <div class="surface-head">
       <div>
-        <h3>{{ requestForm.id ? 'Изменить заявку' : 'Тестовая заявка от охранника' }}</h3>
-        <p class="muted">Этот блок повторяет действия охранника. Для повседневной работы он не нужен.</p>
+        <h3>{{ requestForm.id ? 'Изменить заявку' : 'Тестовая заявка от водителя' }}</h3>
+        <p class="muted">Этот блок имитирует подачу заявки водителем. Для повседневной работы он не нужен.</p>
       </div>
     </div>
     <form class="form-grid" @submit.prevent="submitRequest">
