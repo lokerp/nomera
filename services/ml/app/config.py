@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     backend_url: str = "http://localhost:8001"
     backend_api_key: str = ""
 
+    # --- Detector engine selection ---
+    # "fast-alpr"  → axis-aligned bbox detector + cropped OCR (legacy)
+    # "keypoint"   → YOLOv8-Pose 4-corner detector + perspective-warped OCR
+    detector_engine: str = "keypoint"
+
     # --- fast-alpr settings ---
     fastalpr_detector_model: str = "yolo-v9-s-608-license-plate-end2end"
     fastalpr_detector_model_path: str = ""  # local ONNX detector path (overrides hub model when set)
@@ -29,6 +34,23 @@ class Settings(BaseSettings):
     fastalpr_ocr_model: str = ""  # hub model name (leave empty when using custom paths)
     fastalpr_ocr_model_path: str = "models/ru_ocr.onnx"  # custom ONNX model
     fastalpr_ocr_config_path: str = "models/ru_plate_config.yaml"  # custom plate config
+
+    # --- Keypoint detector (YOLOv8-Pose) ---
+    keypoint_model_path: str = "license-plate-keypoint-detection/license_plate_keypoint.pt"
+    keypoint_detector_conf: float = 0.25
+    keypoint_min_kp_conf: float = 0.5           # per-corner minimum
+    keypoint_min_avg_kp_conf: float = 0.6       # average across the four corners
+    keypoint_warp_min_width: int = 192          # minimum warped crop width fed to OCR
+    keypoint_warp_min_height: int = 96          # minimum warped crop height fed to OCR
+    # Reject plates whose opposing sides differ by more than this ratio
+    # (heavy perspective skew → OCR is unreliable even after the warp).
+    keypoint_max_skew_ratio: float = 1.6
+
+    # --- OCR gating ---
+    # Drop detections whose OCR confidence (mean over non-padding characters)
+    # is below this threshold. Raising it cuts false positives at the cost of
+    # missing very-distant or very-skewed plates.
+    min_ocr_confidence: float = 0.85
 
     # --- Video processing ---
     frame_skip: int = 5          # process every Nth frame
@@ -40,6 +62,12 @@ class Settings(BaseSettings):
     # --- Plate tracker ---
     tracker_window_sec: float = 10.0    # deduplication sliding window
     tracker_min_confirmations: int = 3  # min detections to confirm a plate
+    # Winning variant must beat the runner-up by at least this much weighted
+    # score before the event is emitted. Each detection contributes its OCR
+    # confidence (already ≥ min_ocr_confidence) as weight, so a margin of 0.6
+    # is roughly "one extra clean detection ahead of the runner-up". Setting
+    # this to 0 disables the gate (pure count-based voting).
+    tracker_winner_min_margin: float = 0.6
     tracker_departure_sec: float = 5.0  # seconds without detection → "departed"
     tracker_max_text_distance: int = 1  # strict match by OCR text distance
     tracker_spatial_match_iou: float = 0.45  # fallback IoU match for OCR variants

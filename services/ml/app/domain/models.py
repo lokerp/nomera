@@ -45,6 +45,9 @@ class PlateDetection:
     confidence: float
     frame_number: int
     timestamp: float  # seconds from video start
+    # OCR-only confidence, averaged across recognized non-padding characters.
+    # 0.0 means "not reported" (legacy callers); set by the detectors.
+    ocr_confidence: float = 0.0
 
     @property
     def bbox_area(self) -> float:

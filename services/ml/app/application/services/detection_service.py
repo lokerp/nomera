@@ -189,6 +189,7 @@ class DetectionService:
             duplicate_event_window_sec=self._settings.tracker_duplicate_event_window_sec,
             duplicate_event_text_distance=self._settings.tracker_duplicate_event_text_distance,
             duplicate_event_center_distance_factor=self._settings.tracker_duplicate_event_center_distance_factor,
+            winner_min_margin=self._settings.tracker_winner_min_margin,
         )
 
         # Frame buffer for batch processing

@@ -70,6 +70,10 @@ class _TrackedPlate:
     canonical_text: str
     text_votes: dict[str, int] = field(default_factory=lambda: defaultdict(int))
     text_confidence_sum: dict[str, float] = field(default_factory=lambda: defaultdict(float))
+    # Weighted score per text variant (sum of per-detection OCR confidence).
+    # Drives the "схватка" — winner has both the most weight AND a margin
+    # over the runner-up before we commit to an event.
+    text_weight: dict[str, float] = field(default_factory=lambda: defaultdict(float))
     detections: list[PlateDetection] = field(default_factory=list)
     best_bbox: BoundingBox | None = None
     best_bbox_area: float = 0.0
@@ -119,6 +123,7 @@ class PlateTracker:
         duplicate_event_window_sec: float = 4.0,
         duplicate_event_text_distance: int = 2,
         duplicate_event_center_distance_factor: float = 3.0,
+        winner_min_margin: float = 0.0,
     ) -> None:
         self._camera_id = camera_id
         self._camera_role = camera_role
@@ -134,6 +139,7 @@ class PlateTracker:
         self._duplicate_event_window_sec = duplicate_event_window_sec
         self._duplicate_event_text_distance = duplicate_event_text_distance
         self._duplicate_event_center_distance_factor = duplicate_event_center_distance_factor
+        self._winner_min_margin = max(0.0, float(winner_min_margin))
 
         # key = canonical plate text, value = tracking state
         self._tracked: dict[str, _TrackedPlate] = {}
@@ -230,8 +236,15 @@ class PlateTracker:
                 )
                 self._tracked[text] = tracked
 
+            # Per-detection weight for the text-variant "schvatka". OCR
+            # confidence is already gated upstream (≥ min_ocr_confidence),
+            # so this is in roughly [0.85, 1.0]. Fall back to the combined
+            # confidence for legacy detectors that don't populate ocr_conf.
+            ocr_weight = det.ocr_confidence if det.ocr_confidence > 0 else det.confidence
+
             # Update tracking state
             tracked.text_votes[text] += 1
+            tracked.text_weight[text] += float(ocr_weight)
             tracked.text_confidence_sum[text] += float(max(det.confidence, det.bbox.confidence))
             tracked.last_seen_time = now
             tracked.total_count += 1
@@ -251,8 +264,15 @@ class PlateTracker:
                     except Exception:
                         pass
 
-            # Check if we can emit an event
-            if not tracked.event_emitted and tracked.total_count >= self._min_confirmations:
+            # Check if we can emit an event. We require (a) enough total
+            # detections AND (b) a clear winner in the text-variant schvatka —
+            # otherwise an ambiguous 1-char-different cluster could publish
+            # the wrong plate just because it was first.
+            if (
+                not tracked.event_emitted
+                and tracked.total_count >= self._min_confirmations
+                and self._has_clear_winner(tracked)
+            ):
                 event = self._create_event(tracked)
                 tracked.event_emitted = True
                 if self._is_probable_duplicate_event(event, now):
@@ -310,12 +330,37 @@ class PlateTracker:
 
         return False
 
+    def _has_clear_winner(self, tracked: _TrackedPlate) -> bool:
+        """
+        True when the top text variant beats the runner-up by enough weight.
+
+        Each detection contributes its OCR confidence as weight, so a margin
+        of ~0.6 with min_ocr_confidence=0.85 is "roughly one extra clean
+        detection ahead". When 3 detections produce 3 different OCR variants
+        (1/1/1 split) the margin is 0 → emission is postponed until more
+        evidence arrives. Disabled when winner_min_margin == 0.
+        """
+        if self._winner_min_margin <= 0.0:
+            return True
+        if not tracked.text_weight:
+            return True
+
+        sorted_weights = sorted(tracked.text_weight.values(), reverse=True)
+        if len(sorted_weights) < 2:
+            return True
+        return (sorted_weights[0] - sorted_weights[1]) >= self._winner_min_margin
+
     def _create_event(self, tracked: _TrackedPlate) -> DetectionEvent:
         """Create a DetectionEvent from tracked plate state."""
-        # Choose text by votes first, then by accumulated confidence.
+        # Choose text by weighted OCR score first, then by raw vote count,
+        # then by accumulated combined confidence.
         best_text = max(
             tracked.text_votes,
-            key=lambda t: (tracked.text_votes[t], tracked.text_confidence_sum.get(t, 0.0)),
+            key=lambda t: (
+                tracked.text_weight.get(t, 0.0),
+                tracked.text_votes.get(t, 0),
+                tracked.text_confidence_sum.get(t, 0.0),
+            ),
         )
 
         best_text_votes = max(1, tracked.text_votes.get(best_text, 1))

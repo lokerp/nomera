@@ -34,6 +34,7 @@ class FastAlprDetector(IPlateDetector):
         ocr_model: str = "",
         ocr_model_path: str = "",
         ocr_config_path: str = "",
+        min_ocr_confidence: float = 0.0,
     ) -> None:
         self._detector_model = detector_model
         self._detector_model_path = detector_model_path
@@ -41,6 +42,7 @@ class FastAlprDetector(IPlateDetector):
         self._ocr_model = ocr_model
         self._ocr_model_path = ocr_model_path
         self._ocr_config_path = ocr_config_path
+        self._min_ocr_confidence = min_ocr_confidence
         self._alpr = None
 
     def warmup(self) -> None:
@@ -185,6 +187,11 @@ class FastAlprDetector(IPlateDetector):
                     else:
                         ocr_conf = float(ocr.confidence)
 
+                # Hard gate: low-confidence OCR results are the main source of
+                # false positives — drop them before they enter the tracker.
+                if ocr_conf < self._min_ocr_confidence:
+                    continue
+
                 combined_confidence = (bbox_conf + ocr_conf) / 2 if ocr_conf > 0 else bbox_conf
 
                 # --- Region ---
@@ -203,6 +210,7 @@ class FastAlprDetector(IPlateDetector):
                     confidence=combined_confidence,
                     frame_number=0,  # will be set by caller
                     timestamp=0.0,   # will be set by caller
+                    ocr_confidence=ocr_conf,
                 )
                 frame_detections.append(plate)
 

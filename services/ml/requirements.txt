@@ -8,3 +8,5 @@ fast-alpr>=0.3.0
 fast-plate-ocr>=1.1.0
 open-image-models>=0.5.1
 onnxruntime-gpu>=1.19.2
+# keypoint engine dependencies (YOLOv8-Pose via Ultralytics)
+ultralytics>=8.0.0
