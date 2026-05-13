@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(Get-ChildItem -Path \"d:\\\\Documents\\\\Projects\\\\nomera\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(python -c ' *)",
+      "Bash(pip install *)"
     ]
   }
 }

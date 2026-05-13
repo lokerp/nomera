@@ -23,6 +23,25 @@ services/ml/example_video.mp4
 *.pt
 *.ckpt
 *.pth
+*.zip
 data/
 
 training/
+
+
+# Среды разработки (IDE)
+.idea/
+.vscode/
+
+# Системные файлы
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Python Build
+build/
+*.egg-info/
+
+fsi_info
