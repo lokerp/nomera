@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import enum
+import json
 import uuid
 from datetime import datetime, timezone
 
@@ -174,7 +175,44 @@ class ScanLog(Base):
     bbox_x2: Mapped[float | None] = mapped_column(default=None)
     bbox_y2: Mapped[float | None] = mapped_column(default=None)
     bbox_confidence: Mapped[float | None] = mapped_column(default=None)
+    # JSON-encoded list of 4 [x,y] points (TL, TR, BR, BL) in image-pixel
+    # coordinates. Null when the detector that produced this scan didn't
+    # emit keypoints (legacy bbox-only path).
+    corners_json: Mapped[str | None] = mapped_column(String(512), default=None)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     parking_lot: Mapped[ParkingLot] = relationship(back_populates="scan_logs")
     camera: Mapped[Camera] = relationship(back_populates="scan_logs")
+
+    @property
+    def corners(self) -> list[list[float]] | None:
+        """
+        Plate quadrilateral as 4 points (TL, TR, BR, BL).
+
+        - Returns the JSON-encoded keypoint quadrilateral when the detector
+          provided one.
+        - Falls back to the axis-aligned bbox expressed as 4 corners so older
+          records (pre-keypoint migration) still render as a polygon on the
+          frontend — no second code path required.
+        """
+        if self.corners_json:
+            try:
+                parsed = json.loads(self.corners_json)
+            except (TypeError, ValueError):
+                parsed = None
+            if isinstance(parsed, list):
+                return parsed
+
+        if (
+            self.bbox_x1 is not None
+            and self.bbox_y1 is not None
+            and self.bbox_x2 is not None
+            and self.bbox_y2 is not None
+        ):
+            return [
+                [float(self.bbox_x1), float(self.bbox_y1)],
+                [float(self.bbox_x2), float(self.bbox_y1)],
+                [float(self.bbox_x2), float(self.bbox_y2)],
+                [float(self.bbox_x1), float(self.bbox_y2)],
+            ]
+        return None

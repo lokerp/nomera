@@ -197,13 +197,25 @@ class FastAlprDetector(IPlateDetector):
                 # --- Region ---
                 region = ocr.region if ocr.region else "unknown"
 
+                x1f, y1f = float(bbox.x1), float(bbox.y1)
+                x2f, y2f = float(bbox.x2), float(bbox.y2)
+                # Axis-aligned bbox expressed as the same 4-point quadrilateral
+                # the keypoint detector emits, so downstream code (overlay,
+                # tracker, persistence) has a single uniform shape to work with.
+                rect_corners: list[tuple[float, float]] = [
+                    (x1f, y1f),  # TL
+                    (x2f, y1f),  # TR
+                    (x2f, y2f),  # BR
+                    (x1f, y2f),  # BL
+                ]
+
                 plate = PlateDetection(
                     plate_text=ocr.text.strip().upper(),
                     bbox=BoundingBox(
-                        x1=float(bbox.x1),
-                        y1=float(bbox.y1),
-                        x2=float(bbox.x2),
-                        y2=float(bbox.y2),
+                        x1=x1f,
+                        y1=y1f,
+                        x2=x2f,
+                        y2=y2f,
                         confidence=bbox_conf,
                     ),
                     region_name=str(region),
@@ -211,6 +223,7 @@ class FastAlprDetector(IPlateDetector):
                     frame_number=0,  # will be set by caller
                     timestamp=0.0,   # will be set by caller
                     ocr_confidence=ocr_conf,
+                    corners=rect_corners,
                 )
                 frame_detections.append(plate)
 

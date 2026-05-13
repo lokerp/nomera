@@ -48,6 +48,7 @@ async def _ensure_scan_logs_columns(conn) -> None:
         "bbox_x2": "FLOAT",
         "bbox_y2": "FLOAT",
         "bbox_confidence": "FLOAT",
+        "corners_json": "VARCHAR(512)",
     }
     result = await conn.exec_driver_sql("PRAGMA table_info(scan_logs)")
     existing = {row[1] for row in result.fetchall()}

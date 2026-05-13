@@ -53,6 +53,11 @@ class HttpEventSender(IEventSender):
                 "y2": event.bbox.y2,
                 "confidence": event.bbox.confidence,
             } if event.bbox else None,
+            "corners": (
+                [[float(x), float(y)] for x, y in event.corners]
+                if event.corners
+                else None
+            ),
             "camera_id": event.camera_id,
             "camera_role": event.camera_role.value,
             "region_name": event.region_name,
@@ -100,6 +105,11 @@ class HttpEventSender(IEventSender):
                         "y2": det.bbox.y2,
                         "confidence": det.bbox.confidence,
                     },
+                    "corners": (
+                        [[float(x), float(y)] for x, y in det.corners]
+                        if det.corners
+                        else None
+                    ),
                     "confidence": det.confidence,
                     "region_name": det.region_name,
                 }

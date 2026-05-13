@@ -349,11 +349,7 @@ function handleConfirmedDetection(payload) {
     photo_url: payload.photo_url || '',
     frame_width: payload.frame_width || 0,
     frame_height: payload.frame_height || 0,
-    bbox_x1: payload.bbox?.x1 ?? null,
-    bbox_y1: payload.bbox?.y1 ?? null,
-    bbox_x2: payload.bbox?.x2 ?? null,
-    bbox_y2: payload.bbox?.y2 ?? null,
-    bbox_confidence: payload.bbox?.confidence ?? null,
+    corners: Array.isArray(payload.corners) ? payload.corners : null,
     timestamp: payload.timestamp || new Date().toISOString()
   }
   scanLogs.value = [nextItem, ...scanLogs.value.filter((item) => item.id !== nextItem.id)].slice(0, 200)

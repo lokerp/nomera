@@ -179,6 +179,9 @@ class ScanLogResponse(BaseModel):
     bbox_x2: float | None = None
     bbox_y2: float | None = None
     bbox_confidence: float | None = None
+    # Decoded plate corners (TL, TR, BR, BL) in pixel coords, or null.
+    # Read off the `ScanLog.corners` property which decodes corners_json.
+    corners: list[list[float]] | None = None
     timestamp: datetime
 
 

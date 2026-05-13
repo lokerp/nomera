@@ -16,6 +16,9 @@ class BoundingBoxSchema(BaseModel):
 class RawPlateDetectionSchema(BaseModel):
     plate_text: str
     bbox: BoundingBoxSchema
+    # Ordered plate corners (TL, TR, BR, BL) in image-pixel coordinates.
+    # Present for keypoint-based detectors; absent for legacy bbox detectors.
+    corners: list[list[float]] | None = None
     confidence: float
     region_name: str = ""
 
@@ -34,6 +37,7 @@ class ConfirmedDetectionPayload(BaseModel):
     id: str
     plate_text: str
     bbox: BoundingBoxSchema | None = None
+    corners: list[list[float]] | None = None
     camera_id: str
     camera_role: str
     region_name: str = ""

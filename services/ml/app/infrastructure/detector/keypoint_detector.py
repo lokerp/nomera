@@ -299,6 +299,10 @@ class KeypointAlprDetector(IPlateDetector):
 
                 region = getattr(ocr_pred, "region", None) or "unknown"
 
+                ordered_corners: list[tuple[float, float]] = [
+                    (float(pt[0]), float(pt[1])) for pt in ordered
+                ]
+
                 frame_dets.append(
                     PlateDetection(
                         plate_text=text,
@@ -314,6 +318,7 @@ class KeypointAlprDetector(IPlateDetector):
                         frame_number=0,  # populated by caller
                         timestamp=0.0,   # populated by caller
                         ocr_confidence=ocr_conf,
+                        corners=ordered_corners,
                     )
                 )
             out.append(frame_dets)

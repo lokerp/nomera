@@ -77,6 +77,7 @@ class _TrackedPlate:
     detections: list[PlateDetection] = field(default_factory=list)
     best_bbox: BoundingBox | None = None
     best_bbox_area: float = 0.0
+    best_corners: list[tuple[float, float]] | None = None
     best_frame: int = 0
     best_timestamp: float = 0.0
     best_region_name: str = ""
@@ -253,6 +254,7 @@ class PlateTracker:
             if det.bbox.area > tracked.best_bbox_area:
                 tracked.best_bbox = det.bbox
                 tracked.best_bbox_area = det.bbox.area
+                tracked.best_corners = list(det.corners) if det.corners else None
                 tracked.best_frame = det.frame_number
                 tracked.best_timestamp = det.timestamp
                 tracked.best_region_name = det.region_name
@@ -384,6 +386,7 @@ class PlateTracker:
             frame_width=tracked.frame_width,
             frame_height=tracked.frame_height,
             snapshot_jpeg=tracked.snapshot_jpeg,
+            corners=list(tracked.best_corners) if tracked.best_corners else None,
         )
 
     def _cleanup_departed(self, now: float) -> None:

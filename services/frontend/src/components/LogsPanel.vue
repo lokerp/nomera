@@ -56,33 +56,43 @@ async function openPhoto(item) {
   await nextTick()
 }
 
-function overlayStyle(item) {
-  if (item?.bbox_x1 === null || item?.bbox_x1 === undefined || !item.frame_width || !item.frame_height) return {}
-  const useNormalized = item.bbox_x2 <= 1 && item.bbox_y2 <= 1
-  const x = useNormalized ? item.bbox_x1 * 100 : (item.bbox_x1 / item.frame_width) * 100
-  const y = useNormalized ? item.bbox_y1 * 100 : (item.bbox_y1 / item.frame_height) * 100
-  const w = useNormalized
-    ? (item.bbox_x2 - item.bbox_x1) * 100
-    : ((item.bbox_x2 - item.bbox_x1) / item.frame_width) * 100
-  const h = useNormalized
-    ? (item.bbox_y2 - item.bbox_y1) * 100
-    : ((item.bbox_y2 - item.bbox_y1) / item.frame_height) * 100
-  return { left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` }
+function normalizedCorners(corners, frameW, frameH) {
+  if (!Array.isArray(corners) || corners.length !== 4) return null
+  if (!frameW || !frameH) return null
+  const result = []
+  for (const point of corners) {
+    if (!Array.isArray(point) || point.length < 2) return null
+    const x = Number(point[0])
+    const y = Number(point[1])
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null
+    // Heuristic: WS protocol allows either absolute pixels or normalized [0..1].
+    const useNormalized = x <= 1 && y <= 1
+    const nx = useNormalized ? x * 100 : (x / frameW) * 100
+    const ny = useNormalized ? y * 100 : (y / frameH) * 100
+    result.push([nx, ny])
+  }
+  return result
 }
 
-function liveOverlayStyle() {
+function pointsToSvgString(points) {
+  return points.map(([x, y]) => `${x.toFixed(3)},${y.toFixed(3)}`).join(' ')
+}
+
+const livePolygon = computed(() => {
   const item = overlayDetection.value
-  if (!item?.bbox || !item.frame_width || !item.frame_height) return {}
-  const useNormalized = item.bbox.x2 <= 1 && item.bbox.y2 <= 1
-  const x = useNormalized ? item.bbox.x1 * 100 : (item.bbox.x1 / item.frame_width) * 100
-  const y = useNormalized ? item.bbox.y1 * 100 : (item.bbox.y1 / item.frame_height) * 100
-  const w = useNormalized
-    ? (item.bbox.x2 - item.bbox.x1) * 100
-    : ((item.bbox.x2 - item.bbox.x1) / item.frame_width) * 100
-  const h = useNormalized
-    ? (item.bbox.y2 - item.bbox.y1) * 100
-    : ((item.bbox.y2 - item.bbox.y1) / item.frame_height) * 100
-  return { left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` }
+  if (!item) return null
+  return normalizedCorners(item.corners, item.frame_width, item.frame_height)
+})
+
+const modalPolygon = computed(() => {
+  const item = selectedPhoto.value
+  if (!item) return null
+  return normalizedCorners(item.corners, item.frame_width, item.frame_height)
+})
+
+function polygonLabelStyle(points) {
+  if (!points) return { display: 'none' }
+  return { left: `${points[0][0]}%`, top: `${points[0][1]}%` }
 }
 
 function connectWs() {
@@ -223,9 +233,19 @@ onBeforeUnmount(() => {
         @loadedmetadata="onVideoMetadata"
         @resize="onVideoMetadata"
       />
-      <div v-if="overlayDetection" class="bbox-live" :style="liveOverlayStyle()">
-        <span>{{ overlayDetection.plate_text }}</span>
-      </div>
+      <template v-if="overlayDetection && livePolygon">
+        <svg
+          class="bbox-svg"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <polygon :points="pointsToSvgString(livePolygon)" />
+        </svg>
+        <span class="bbox-label" :style="polygonLabelStyle(livePolygon)">
+          {{ overlayDetection.plate_text }}
+        </span>
+      </template>
     </div>
     <p v-if="liveError" class="error" role="alert" aria-live="polite">{{ liveError }}</p>
   </section>
@@ -314,13 +334,19 @@ onBeforeUnmount(() => {
           :alt="`Фото распознавания ${selectedPhoto.plate_number}`"
           class="modal-img"
         />
-        <div
-          v-if="selectedPhoto.bbox_x1 !== null && selectedPhoto.frame_width > 0"
-          class="bbox-modal"
-          :style="overlayStyle(selectedPhoto)"
-        >
-          <span>{{ selectedPhoto.plate_number }}</span>
-        </div>
+        <template v-if="modalPolygon">
+          <svg
+            class="bbox-svg"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <polygon :points="pointsToSvgString(modalPolygon)" />
+          </svg>
+          <span class="bbox-label" :style="polygonLabelStyle(modalPolygon)">
+            {{ selectedPhoto.plate_number }}
+          </span>
+        </template>
       </div>
     </div>
   </div>

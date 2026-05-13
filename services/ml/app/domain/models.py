@@ -48,6 +48,11 @@ class PlateDetection:
     # OCR-only confidence, averaged across recognized non-padding characters.
     # 0.0 means "not reported" (legacy callers); set by the detectors.
     ocr_confidence: float = 0.0
+    # Ordered plate corners in image-pixel coordinates: TL, TR, BR, BL.
+    # Always populated: keypoint detectors emit real corners, bbox-only
+    # detectors emit the axis-aligned bbox as a degenerate rectangle.
+    # None only for legacy callers that don't know to fill it.
+    corners: list[tuple[float, float]] | None = None
 
     @property
     def bbox_area(self) -> float:
@@ -76,6 +81,9 @@ class DetectionEvent:
     frame_width: int = 0
     frame_height: int = 0
     snapshot_jpeg: bytes | None = None  # JPEG-encoded frame crop
+    # Ordered plate corners (TL, TR, BR, BL) in image-pixel coordinates.
+    # None when the underlying detector doesn't produce keypoints.
+    corners: list[tuple[float, float]] | None = None
 
 
 @dataclass

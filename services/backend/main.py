@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import asyncio
+import json
 import logging
 import sys
 import uuid
@@ -757,6 +758,24 @@ async def receive_confirmed_detection(payload: ConfirmedDetectionPayload) -> Mes
         camera = await db.get(Camera, payload.camera_id)
         if camera:
             image_url = save_snapshot(payload.snapshot_base64)
+            # If the ML side didn't emit keypoints (e.g. legacy bbox-only
+            # engine), synthesize a rectangular quadrilateral from the bbox so
+            # downstream consumers always see the same shape.
+            corners_points: list[list[float]] | None = None
+            if payload.corners:
+                corners_points = [[float(x), float(y)] for x, y in payload.corners]
+            elif payload.bbox:
+                bb = payload.bbox
+                corners_points = [
+                    [float(bb.x1), float(bb.y1)],
+                    [float(bb.x2), float(bb.y1)],
+                    [float(bb.x2), float(bb.y2)],
+                    [float(bb.x1), float(bb.y2)],
+                ]
+            corners_json = json.dumps(corners_points) if corners_points else None
+            # Always propagate corners over WS so the frontend has a single
+            # rendering path (the polygon — no bbox fallback).
+            ws_payload["corners"] = corners_points
             log_entry = ScanLog(
                 parking_lot_id=camera.parking_lot_id,
                 camera_id=camera.id,
@@ -769,6 +788,7 @@ async def receive_confirmed_detection(payload: ConfirmedDetectionPayload) -> Mes
                 bbox_x2=payload.bbox.x2 if payload.bbox else None,
                 bbox_y2=payload.bbox.y2 if payload.bbox else None,
                 bbox_confidence=payload.bbox.confidence if payload.bbox else None,
+                corners_json=corners_json,
             )
             db.add(log_entry)
             await db.commit()
