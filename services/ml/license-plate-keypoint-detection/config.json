@@ -1,0 +1,42 @@
+{
+  "model_type": "yolov8-pose",
+  "base_model": "yolov8m-pose",
+  "task": "keypoint-detection",
+  "num_classes": 1,
+  "class_names": ["Plate"],
+  "num_keypoints": 4,
+  "keypoint_labels": ["top-left", "top-right", "bottom-right", "bottom-left"],
+  "input_size": 640,
+  "inference": {
+    "conf_threshold": 0.25,
+    "iou_threshold": 0.45,
+    "keypoint_conf_threshold": 0.5,
+    "min_avg_keypoint_conf": 0.6,
+    "min_plate_area": 100
+  },
+  "training": {
+    "epochs": 150,
+    "batch_size": 16,
+    "optimizer": "SGD",
+    "lr0": 0.01,
+    "momentum": 0.937,
+    "weight_decay": 0.0005,
+    "pose_loss_weight": 12.0,
+    "kobj_loss_weight": 2.0,
+    "dataset": "license-plate-new-3 (Roboflow)",
+    "train_images": 190,
+    "val_images": 24,
+    "test_images": 24
+  },
+  "metrics": {
+    "box_precision": 0.977,
+    "box_recall": 0.947,
+    "box_mAP50": 0.9875,
+    "box_mAP50_95": 0.8412,
+    "pose_precision": 0.934,
+    "pose_recall": 0.898,
+    "pose_mAP50": 0.9264,
+    "pose_mAP50_95": 0.9137,
+    "epoch": 150
+  }
+}
