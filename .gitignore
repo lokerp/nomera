@@ -44,10 +44,6 @@ yarn-error.log*
 example_video.mp4
 services/ml/example_video.mp4
 
-# === ML-модели (большие бинарники, не для git) ===
-*.pt
-*.ckpt
-*.pth
 *.zip
 data/
 

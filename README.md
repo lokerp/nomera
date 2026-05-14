@@ -25,13 +25,11 @@
 ## Быстрый запуск (Docker Compose)
 
 ```powershell
-# 1. Клонировать репозиторий
-git clone <repo-url>
+# 1. Клонировать репозиторий вместе с субмодулями (модели включены)
+git clone --recurse-submodules <repo-url>
 cd nomera
 
-# 2. Убедиться, что файлы моделей на месте (см. раздел "Модели" ниже)
-
-# 3. Поднять все сервисы
+# 2. Поднять все сервисы
 docker compose up --build -d
 
 # 4. Проверить статус
@@ -147,7 +145,8 @@ Invoke-RestMethod "http://localhost:8001/api/v1/detections?limit=20"
 
 | Проблема | Причина | Решение |
 |---|---|---|
+| Папки `fast-alpr`, `open-image-models`, `license-plate-keypoint-detection` пустые | Клонирование без субмодулей | `git submodule update --init --recursive` |
+| Ошибка «модель не найдена» (`.pt`) | Субмодуль `license-plate-keypoint-detection` пустой (нужен git-lfs) | Установить [git-lfs](https://git-lfs.com), затем `git submodule update --init --recursive` |
 | ML-контейнер не поднимается | Нет GPU / CUDA-драйверов | Запустить ML без Docker с `onnxruntime-cpu` |
 | Нет детекций в интерфейсе | Пайплайн не запущен | Нажать «Запустить распознавание» в табе «Камеры» |
 | Порт занят | Конфликт с другим процессом | Изменить маппинг в `docker-compose.yml` |
-| Ошибка «модель не найдена» | Отсутствуют файлы моделей | Разместить файлы моделей согласно разделу выше |
